@@ -1,6 +1,6 @@
-library("lme4", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
-library("lmerTest", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
-library(effects)
+#library("lme4", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
+#library("lmerTest", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
+#library(effects)
 
 IPN.data = read.csv("Dataset.csv")
 
