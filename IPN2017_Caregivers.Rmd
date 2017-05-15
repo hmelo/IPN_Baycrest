@@ -1,0 +1,192 @@
+---
+title: "Caregiver burden data preparation"
+author: "Hans, Jenny, and Derek"
+date: "May 14, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+require(ExPosition)
+require(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+rinline <- function(code) {
+  sprintf('``` %s ```', code)
+}
+
+
+```
+
+
+# Overview
+
+Our analyses focus on caregiver burden as the *outcome* from a variety of predictors, such as demographics, disorder type, cognitive function, and neuropsychogical profiles. 
+
+# Load data and construct data set
+
+The observations we work with require at least summary scores from Zarit's (caregiver) burden interview (ZBI; CITE). Conditional to the ZBI, we include participants who classify as:
+
+* Dementia (community and institution),
+* Alzheimer's,
+* Parkinson's disease,
+* Amyotrophic lateral sclerosis,
+* Stroke,
+* Epilepsy, and
+* Multiple sclerosis.
+
+Other conditions to consider (perhaps for later): Depression (depressn==1), Learning Disability (learning==1), Psychiatric Illness (psychiat==1), or Migraines (migraine==1).
+
+
+The following lines of code will read in the data and include only the subjects outlined in the above conditions.
+```{r load data and cases, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
+  ## data exist one directory above and in a separate folder 
+  ### (in part to avoid committing it to Github for now!)
+CSHA.1991.full <- read.csv("../IPN2017_Case_Comp/Dataset.csv")
+
+  ## Conditionals to extract specific participants
+  ### start with primary outcome of interest: caregiver burden
+CSHA.1991.zarit <- CSHA.1991.full[CSHA.1991.full$zarscore < 99,]
+dim(CSHA.1991.zarit)
+
+  ### Now get all data for above conditions
+  conditions.of.interest <- (
+      CSHA.1991.zarit$cgcc==1 |     # Dementia: COMMUNITY CASE
+      CSHA.1991.zarit$cgcc==3 |     # Dementia: INSTITUTION CASE
+      CSHA.1991.zarit$adcc==1 |     # Alzheimer's: YES
+      CSHA.1991.zarit$parkin==1 |   # Parkinson's: YES
+      CSHA.1991.zarit$prstroke==1 | # Stroke: YES
+      CSHA.1991.zarit$als==1 |      # ALS: YES  
+      CSHA.1991.zarit$epilepsy==1 | # Epilepsy: YES
+      CSHA.1991.zarit$ms==1         # Multiple sclerosis: YES
+    )
+CSHA.1991.zarit_disorders <- CSHA.1991.zarit[conditions.of.interest,]  
+dim(CSHA.1991.zarit_disorders)
+```
+
+We now have a subset of observations we should make a pseudo-design matrix of the conditionals above. We want to denote which of the aforementioned categories each individual belongs to:
+
+```{r design matrix, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
+  cols.for.design <- c("cgcc","adcc","parkin","prstroke","als","epilepsy","ms")
+  CSHA.1991.zarit_disorders_design <- CSHA.1991.zarit_disorders[,cols.for.design]
+  
+  dim(CSHA.1991.zarit_disorders_design)
+  head(CSHA.1991.zarit_disorders_design)
+  
+```
+
+We can recode some of the values in these columns to something more sensible with a design matrix. The code below is hidden from the output.
+
+```{r what}
+summary(as.factor(CSHA.1991.zarit_disorders_design$adcc))
+```
+
+```{r sensible design, tidy=TRUE, tidy.opts=list(width.cutoff=55), include=FALSE}
+
+  ##recode cgcc
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("0","N/A",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("1","COMM.CASE",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("2","COMM.CON",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("3","INS.CASE",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)  
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("4","INS.CON",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)  
+  
+  ##recode adcc.
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("0","N/A",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("1","CASE",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("2","CON",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+
+  ##recode parkin
+  CSHA.1991.zarit_disorders_design$parkin <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$parkin,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$parkin <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$parkin,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$parkin <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$parkin,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$parkin <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$parkin,fixed=T)  
+  
+  ##recode prstroke
+  CSHA.1991.zarit_disorders_design$prstroke <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$prstroke <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$prstroke <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$prstroke <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+  
+  ##recode als
+  CSHA.1991.zarit_disorders_design$als <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$als,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$als <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$als,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$als <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$als,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$als <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$als,fixed=T)  
+  
+  ##recode epilepsy
+  CSHA.1991.zarit_disorders_design$epilepsy <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$epilepsy,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$epilepsy <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$epilepsy,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$epilepsy <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$epilepsy,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$epilepsy <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$epilepsy,fixed=T)
+  
+  ##recode ms
+  CSHA.1991.zarit_disorders_design$ms <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$ms,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$ms <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$ms,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$ms <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$ms,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$ms <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$ms,fixed=T)
+  
+  colnames(CSHA.1991.zarit_disorders_design) <- c("DEMENTIA","ALZ","PD","STROKE","ALS","EPI","MS")
+  
+  CSHA.design <- makeNominalData(CSHA.1991.zarit_disorders_design)
+```
+
+```{r show_design}
+  head(CSHA.1991.zarit_disorders_design)
+  head(CSHA.design)
+  
+  colSums(CSHA.design)
+```
