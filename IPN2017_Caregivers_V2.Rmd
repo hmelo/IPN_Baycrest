@@ -192,9 +192,61 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   ## predictors
   ### demographics
   demographics <- c("studysex","agestrat","studyage","clinage","studyed","eduyear","edulevel","region","race","ethnic1","ethnic2","wbocc","working","institut")
-  famhistory <- c("twin","samesex","identic","familyhs","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3")
   ### caregiver demographics
   cg.demographics <- c("relat","cgsex","cgage","cgeth1","cgeth2","cgedyrs","cgedlev")
+  ### cognition
+  cognition <- c("langabil","mmms","score3ms")
+  ### behavioral disturbance
+  beh.disturb <- c("apathy","wander","violenc","disinhi","otherbe")
+  
+  
+  ### full neuropsych
+    ### neuropsych batteries
+  neuropsych <- c("neurdone","languagn","doi","occup","materlan","difficul","othrcomn","psyid","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","tokencol","waisbloc","digit","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","daily","ndiag","severity","shrtlosn","longlosn","clanguag","cdofint","cintid","c235","c236","c236a","c237","c238","c239","c240","c241","c242","c243","c244","c245","c246","c247","c248","c249","c250","c251","c252","c253","c253am","c253ay","c253bm","c253by","c254","c255","c256","c257","c258","c259","c260","c261","c262","c263","c264","c265","c266","c267","c268","c269","c270","c271","c272","c273","c274","c275","c276","c277","c278","c279","c280","c281","c282","c283","c284","c285","c286","c286a","c287","c287a","c288","c289","c290","c291","c292","c293","c294","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310","c311","c312","c313","c314","c315","c316","c317","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333")
+  
+  #### neuropsych: behavioral ratings
+  np.beh_rate <- c("coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","hearaid","glasses","wheel")
+  #### neuropsych: movement disorders
+  np.move_disorder <- c("gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso")
+  #### neuropsych: memory, fluency, etc...
+  np.battery <- c("wechsler","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","tokencol","waisbloc","digit")
+  #### neuropsych: impairments & diagnoses
+  np.impair_diagnoses <- c("nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","daily","ndiag","severity","shrtlosn","longlosn")
+  #### neuropsych: personality  
+  np.personality <- c("c238","c239","c240","c241","c242","c243","c244","c245","c246")
+  #### neuropsych: memory
+  np.memory <- c("c247","c248","c249","c250","c251","c252","c253","c253am","c253ay")
+  #### neuropsych: general function
+  np.gen_func <- c("c253bm","c253by","c254","c255","c256","c257","c258","c259","c260","c261","c262")
+  #### neuropsych: every day activities
+  np.everyday <- c("c263","c264","c265","c266","c267","c268","c269")
+  #### neuropsych: delerium
+  np.delerium <- c("c270","c271","c272","c273","c274")
+  #### neuropsych: depression
+  np.depress <- c("c275","c276","c277","c278","c279")
+  #### neuropsych: sleep
+  np.sleep <- c("c280","c281","c282","c283","c284","c285")
+  #### neuropsych: paranoia
+  np.paranoia <- c("c286","c286a","c287","c287a")
+  #### neuropsych: cardiovascular
+  np.cv <- c("c288","c289","c290","c291")
+  #### neuropsych: summary
+  np.gen_sum <- c("c292","c293","c294")
+  #### neuropsych: past medical history
+  np.history <- c("c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310")
+  
+  
+  
+  ## variables that exist somewhere between predictors and additional variables of interest
+  ### dementia
+  dementia <- c("shorterm","longterm","abstract","judgemen","aphasia","apraxia","agnosia","construc","change","work","social","relation")
+  ### alzheimer's
+  alz <- c("addement","adcognit","adworsen","adconsci","onsetage","absence")
+  
+  
+  ## possible predictors/mediators/variables of interest or confounds.
+  ### Family history
+  famhistory <- c("twin","samesex","identic","familyhs","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3")
   ### languages spoken
   languages <- c("english","french","italian","german","spanish","iceland","ukrain","chinese","japanese","danish","arabic","urdu","otherlan")
   ### health issues
@@ -203,18 +255,8 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   substances <- c("coffee","tea","drinks","smoke","pipe","cigars","beer","wine","spirits")
   ### head injuries
   head.inj <- c("consloss","consage")
-  ### cognition
-  cognition <- c("langabil","mmms","score3ms")
-  ### behavioral disturbance
-  beh.disturb <- c("apathy","wander","violenc","disinhi","otherbe")
   ### depression
   depress <- c("sad","interest","appetite","lossweig","asleep","awaken","allday","tiredall","move","worthles","suicide","most","impress")
-  ### dementia
-  dementia <- c("shorterm","longterm","abstract","judgemen","aphasia","apraxia","agnosia","construc","change","work","social","relation")
-  ### alzheimer's
-  alz <- c("addement","adcognit","adworsen","adconsci","onsetage","absence")
-  ### neuropsych batteries
-  neuropsych <- c("neurdone","languagn","doi","occup","materlan","difficul","othrcomn","psyid","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","tokencol","waisbloc","digit","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","daily","ndiag","severity","shrtlosn","longlosn","clanguag","cdofint","cintid","c235","c236","c236a","c237","c238","c239","c240","c241","c242","c243","c244","c245","c246","c247","c248","c249","c250","c251","c252","c253","c253am","c253ay","c253bm","c253by","c254","c255","c256","c257","c258","c259","c260","c261","c262","c263","c264","c265","c266","c267","c268","c269","c270","c271","c272","c273","c274","c275","c276","c277","c278","c279","c280","c281","c282","c283","c284","c285","c286","c286a","c287","c287a","c288","c289","c290","c291","c292","c293","c294","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310","c311","c312","c313","c314","c315","c316","c317","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333")
 
   
   ## outcomes
@@ -223,12 +265,19 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   ### caregiver "felt"
   cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
   
-  predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych)]  
+  
+  targeted.predictors <- CSHA.1991.zarit_disorders[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+  
+  full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych)]  
   
   outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
   
-  dim(predictors)
+  dim(targeted.predictors)
+  dim(full.predictors)
   dim(outcomes)
   
-  #CSHA.1991.zarit_disorders
+  
 ```
+
+
+For our project we should begin with just the two sets of variables identified as `target.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
