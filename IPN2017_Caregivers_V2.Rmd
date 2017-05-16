@@ -270,14 +270,139 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   
   full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych)]  
   
-  outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
+  full.outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
   
   dim(targeted.predictors)
   dim(full.predictors)
-  dim(outcomes)
+  dim(full.outcomes) # we may want to reduce it a bit.
+```
+
+```{r reduced_recode}
+#"studyage","clinage"
+# "eduyear","edulevel"
+# "region"
+# "wbocc"
+# "cgsex"
+# "cgage"
+# "cgedyrs","cgedlev"
+# "mmms"
+#beh.disturb
+#np.battery
+
+
+final.predictor_demographics <- c("studysex", "studyage","clinage","eduyear","edulevel","region","wbocc","cgsex","cgage","cgedyrs","cgedlev")
+
+final.predictor.set <- c(final.predictor_demographics,beh.disturb,np.battery)
+
+final.predictors <- targeted.predictors[,final.predictor.set]
+rownames(final.predictors) <- targeted.predictors[,"CASEID"]
+
+## maybe not
+#"langabil"
+
+## start recoding
+#final.predictors[,"sex"]
+
+final.predictors$studysex <- ifelse(final.predictors$studysex==1,"MALE","FEMALE")
+  final.predictors$studysex <- as.factor(final.predictors$studysex)
+  
+final.predictors$eduyear <- ifelse(final.predictors$eduyear>=77,NA,final.predictors$eduyear)
+
+final.predictors$edulevel <- ifelse(final.predictors$edulevel>=77,NA,final.predictors$edulevel)
+  
+final.predictors$edulevel[final.predictors$edulevel==1 | final.predictors$edulevel==2 | final.predictors$edulevel==3 | final.predictors$edulevel==4] <- "<HS"
+
+  final.predictors$edulevel[final.predictors$edulevel==5] <- "HS"
+  
+  final.predictors$edulevel[final.predictors$edulevel==6 | final.predictors$edulevel==7 | final.predictors$edulevel==8] <- "<=BACHELORS"
+  
+  final.predictors$edulevel[final.predictors$edulevel==9] <- "BACHELORS"
+  final.predictors$edulevel[final.predictors$edulevel==10] <- "MASTERS"  
+  final.predictors$edulevel[final.predictors$edulevel==11] <- "PHD"    
+  final.predictors$edulevel[final.predictors$edulevel==12] <- "OTHER"    
+  
+  final.predictors$edulevel <- as.factor(final.predictors$edulevel)
   
   
+  final.predictors$region[final.predictors$region==9] <- NA
+  final.predictors$region[final.predictors$region==1] <- "RURAL"
+  final.predictors$region[final.predictors$region==2] <- "URBAN"  
+  
+  final.predictors$region <- as.factor(final.predictors$region)
+  
+  final.predictors$wbocc[final.predictors$wbocc>=8] <- NA
+  final.predictors$wbocc[final.predictors$wbocc==1] <- "LABORER"
+  final.predictors$wbocc[final.predictors$wbocc==2] <- "SERVICE"
+  final.predictors$wbocc[final.predictors$wbocc==3] <- "NOT LABOR FORCE"
+  final.predictors$wbocc[final.predictors$wbocc==4] <- "CRAFT"    
+  final.predictors$wbocc[final.predictors$wbocc==5] <- "MANAGER/OFFICIAL"
+  final.predictors$wbocc[final.predictors$wbocc==6] <- "PROFESSIONAL"
+  
+  final.predictors$wbocc <- as.factor(final.predictors$wbocc)
+  
+  final.predictors$cgsex <- ifelse(final.predictors$cgsex==1,"MALE","FEMALE")
+  
+  final.predictors$cgsex <- as.factor(final.predictors$cgsex)
+  
+  final.predictors$cgage <- ifelse(final.predictors$cgage==999,NA,final.predictors$cgage)
+  
+  final.predictors$cgedyrs <- ifelse(final.predictors$cgedyrs>=88,NA,final.predictors$cgedyrs)
+
+final.predictors$cgedlev <- ifelse(final.predictors$cgedlev>=77,NA,final.predictors$cgedlev)
+
+final.predictors$cgedlev[final.predictors$cgedlev==1 | final.predictors$cgedlev==2 | final.predictors$cgedlev==3 | final.predictors$cgedlev==4] <- "<HS"
+
+final.predictors$cgedlev[final.predictors$cgedlev==5] <- "HS"
+
+final.predictors$cgedlev[final.predictors$cgedlev==6 | final.predictors$cgedlev==7 | final.predictors$cgedlev==8] <- "<=BACHELORS"
+
+final.predictors$cgedlev[final.predictors$cgedlev==9] <- "BACHELORS"
+final.predictors$cgedlev[final.predictors$cgedlev==10] <- "MASTERS"  
+final.predictors$cgedlev[final.predictors$cgedlev==11] <- "PHD"    
+final.predictors$cgedlev[final.predictors$cgedlev==12] <- "OTHER"  
+
+final.predictors$cgedlev <- as.factor(final.predictors$cgedlev)
+
+  
+final.predictors$apathy <- ifelse(final.predictors$apathy >= 5, NA, final.predictors$apathy)
+final.predictors$apathy[final.predictors$apathy==1] <- "YES"
+final.predictors$apathy[final.predictors$apathy==2] <- "MAYBE"
+final.predictors$apathy[final.predictors$apathy==3] <- "NO"
+final.predictors$apathy[final.predictors$apathy==4] <- "NOT_RELEVANT"
+final.predictors$apathy <- as.factor(final.predictors$apathy)
+
+final.predictors$wander <- ifelse(final.predictors$wander >= 5, NA, final.predictors$wander)
+final.predictors$wander[final.predictors$wander==1] <- "YES"
+final.predictors$wander[final.predictors$wander==2] <- "MAYBE"
+final.predictors$wander[final.predictors$wander==3] <- "NO"
+final.predictors$wander[final.predictors$wander==4] <- "NOT_RELEVANT"
+final.predictors$wander <- as.factor(final.predictors$wander)
+
+final.predictors$violenc <- ifelse(final.predictors$violenc >= 5, NA, final.predictors$violenc)
+final.predictors$violenc[final.predictors$violenc==1] <- "YES"
+final.predictors$violenc[final.predictors$violenc==2] <- "MAYBE"
+final.predictors$violenc[final.predictors$violenc==3] <- "NO"
+final.predictors$violenc[final.predictors$violenc==4] <- "NOT_RELEVANT"
+final.predictors$violenc <- as.factor(final.predictors$violenc)
+
+final.predictors$disinhi <- ifelse(final.predictors$disinhi >= 5, NA, final.predictors$disinhi)
+final.predictors$disinhi[final.predictors$disinhi==1] <- "YES"
+final.predictors$disinhi[final.predictors$disinhi==2] <- "MAYBE"
+final.predictors$disinhi[final.predictors$disinhi==3] <- "NO"
+final.predictors$disinhi[final.predictors$disinhi==4] <- "NOT_RELEVANT"
+final.predictors$disinhi <- as.factor(final.predictors$disinhi)
+
+final.predictors$otherbe <- ifelse(final.predictors$otherbe >= 5, NA, final.predictors$otherbe)
+final.predictors$otherbe[final.predictors$otherbe==1] <- "YES"
+final.predictors$otherbe[final.predictors$otherbe==2] <- "MAYBE"
+final.predictors$otherbe[final.predictors$otherbe==3] <- "NO"
+final.predictors$otherbe[final.predictors$otherbe==4] <- "NOT_RELEVANT"
+final.predictors$otherbe <- as.factor(final.predictors$otherbe)
+
+## pretty clear by here that edulevel, eduyear, region, wbocc all have too high a missing level and must be excluded from primary analyses.
+
 ```
 
 
-For our project we should begin with just the two sets of variables identified as `target.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
+
+For our project we should begin with just the two sets of variables identified as `final.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
