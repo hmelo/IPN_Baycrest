@@ -316,6 +316,18 @@ vars.missing80plus<-c("hbpyr","sweight")
 ############
 full.predictors.NAs<-full.predictors
 
+full.predictors.NAs[,vars.missing.x]<-apply(full.predictors.NAs[,vars.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
+full.predictors.NAs[,vars.missing.xx]<-apply(full.predictors.NAs[,vars.missing.xx],2,function(x) {x[(x==77 | x==88 | x==99 | x==66 | x == 98)] <- NA; x})
+full.predictors.NAs[,vars.missing.xxx]<-apply(full.predictors.NAs[,vars.missing.xxx],2,function(x) {x[(x==777 | x==888 | x==999 | x==996 | x == 997 | x == 998)] <- NA; x})
+full.predictors.NAs[,vars.missing.xxxxxx]<-apply(full.predictors.NAs[,vars.missing.xxxxxx],2,function(x) {x[(x==999999)] <- NA; x})
+full.predictors.NAs[,vars.skipped.0]<-apply(full.predictors.NAs[,vars.skipped.0],2,function(x) {x[(x==0)] <- NA; x})
+full.predictors.NAs[,vars.missing.6]<-apply(full.predictors.NAs[,vars.missing.6],2,function(x) {x[(x==6)] <- NA; x})
+full.predictors.NAs[,vars.missing.5]<-apply(full.predictors.NAs[,vars.missing.5],2,function(x) {x[(x==5)] <- NA; x})
+full.predictors.NAs[,vars.missing.4]<-apply(full.predictors.NAs[,vars.missing.4],2,function(x) {x[(x==4)] <- NA; x})
+full.predictors.NAs[,vars.missing.666]<-apply(full.predictors.NAs[,vars.missing.666],2,function(x) {x[(x==666)] <- NA; x})
+full.predictors.NAs[,vars.missing.9.only]<-apply(full.predictors.NAs[,vars.missing.9.only],2,function(x) {x[(x==9)] <- NA; x})
+full.predictors.NAs[,vars.missing80plus]<-apply(full.predictors.NAs[,vars.missing80plus],2,function(x) {x[(x>80)] <- NA; x})
+
 
 
 ```
