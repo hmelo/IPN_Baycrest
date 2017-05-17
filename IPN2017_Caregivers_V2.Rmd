@@ -328,6 +328,22 @@ full.predictors.NAs[,vars.missing.666]<-apply(full.predictors.NAs[,vars.missing.
 full.predictors.NAs[,vars.missing.9.only]<-apply(full.predictors.NAs[,vars.missing.9.only],2,function(x) {x[(x==9)] <- NA; x})
 full.predictors.NAs[,vars.missing80plus]<-apply(full.predictors.NAs[,vars.missing80plus],2,function(x) {x[(x>80)] <- NA; x})
 
+targeted.predictors.NAs <- full.predictors.NAs[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+  
+
+### Recoding Outcome variables
+
+## Variables with missing == 7 | 8 | 9
+out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing")
+
+## Variables with missing == 99
+out.missing.xx<-c("zarscore","cesscore")
+
+###
+outcomes.NAs<-outcomes
+
+outcomes.NAs[,out.missing.x]<-apply(outcomes.NAs[,out.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
+outcomes.NAs[,out.missing.xx]<-apply(outcomes.NAs[,out.missing.xx],2,function(x) {x[(x==99)] <- NA; x})
 
 
 ```
