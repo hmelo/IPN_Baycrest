@@ -420,7 +420,8 @@ dim(targeted.predictors)</code></pre>
 <pre class="r"><code>dim(outcomes)</code></pre>
 <pre><code>## [1] 851  45</code></pre>
 <p>For our project we should begin with just the two sets of variables identified as <code>target.predictors</code> and <code>outcomes</code>. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.</p>
-<pre class="r"><code>## Predictor Variables (full set)
+<pre class="r"><code>## Recoding Missing Values with NA Predictor Variables
+## (full set)
 
 ## Variables with missing == 7 | 8 | 9
 vars.missing.x &lt;- c(&quot;region&quot;, &quot;race&quot;, &quot;wbocc&quot;, &quot;working&quot;, 
@@ -1362,8 +1363,8 @@ summary(outcomes.NAs)</code></pre>
 ##  NA's   :10</code></pre>
 <p>Recoding notes and things to be mindful of:</p>
 <ul>
-<li>In general, 7 = refused; 8 = do not know; 9 = missing</li>
-<li>For ns, 66 = visual/hearing impairment</li>
+<li>In general, 7 = refused; 8 = do not know; 9 = missing (all coded as NA in final dataset)</li>
+<li>For neuropsych, 66 = visual/hearing impairment</li>
 <li>all beh.disturb vars have additional coding scheme: not relavent = 4; dnk = 5; could not answer = 6; missing = 9</li>
 <li>coding for score3ms is slightly different for 777 and 888 (see codebook); but coded as NAs for now</li>
 </ul>
