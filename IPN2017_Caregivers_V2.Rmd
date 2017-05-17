@@ -352,7 +352,7 @@ Recoding notes and things to be mindful of:
 * In general, 7 = refused; 8 = do not know; 9 = missing
 * For ns, 66 = visual/hearing impairment
 * all beh.disturb vars have additional coding scheme: not relavent = 4; dnk = 5; could not answer = 6; missing = 9
-* coding for score3ms is slightly different for 777 and 888 (see codebook)
+* coding for score3ms is slightly different for 777 and 888 (see codebook); but coded as NAs for now
 
 
 
