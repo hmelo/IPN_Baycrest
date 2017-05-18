@@ -266,9 +266,9 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
   
   
-  targeted.predictors <- CSHA.1991.zarit_disorders[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+  targeted.predictors <- CSHA.1991.zarit_disorders[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery, "dbdscore", "adlrate")]
   
-  full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych)]  
+  full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych,"dbdscore", "adlrate")]  
   
   outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
   
@@ -287,10 +287,10 @@ For our project we should begin with just the two sets of variables identified a
 ## Predictor Variables (full set)
 
 ## Variables with missing == 7 | 8 | 9
-vars.missing.x<- c("region","race","wbocc","working","institut","cgsex","langabil","apathy","wander","violenc","disinhi","otherbe","neurdone","languagn","occup","difficul","othrcomn","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","tokencol","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","daily","severity","shrtlosn","longlosn","clanguag","c235","c236a","c238","c239","c240","c241","c242","c243","c244","c246","c247","c248","c249","c250","c251","c253","c254","c255","c256","c257","c258","c259","c261","c262","c263","c264","c265","c266","c267","c269","c270","c271","c272","c273","c275","c276","c277","c279","c280","c281","c282","c283","c285","c286","c287","c288","c289","c290","c292","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310",dementia,alz,"twin","samesex","identic","familyhs",languages,"thycond","attack","oheart","leukemia","cancer","proxdiab","drug",substances,"consloss",depress)
+vars.missing.x<- c("region","race","wbocc","working","institut","cgsex","langabil","apathy","wander","violenc","disinhi","otherbe","neurdone","languagn","occup","difficul","othrcomn","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","tokencol","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","daily","severity","shrtlosn","longlosn","clanguag","c235","c236a","c238","c239","c240","c241","c242","c243","c244","c246","c247","c248","c249","c250","c251","c253","c254","c255","c256","c257","c258","c259","c261","c262","c263","c264","c265","c266","c267","c269","c270","c271","c272","c273","c275","c276","c277","c279","c280","c281","c282","c283","c285","c286","c287","c288","c289","c290","c292","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310",dementia,alz,"twin","samesex","identic","familyhs",languages,"thycond","attack","oheart","leukemia","cancer","proxdiab","drug",substances,"consloss",depress,"adlrate")
 
  ## Variables with missing == 66 | 77 | 88 | 98 | 99
-vars.missing.xx<-c("studyed","eduyear","edulevel","ethnic1","ethnic2","relat","cgeth1","cgeth2","cgedyrs","cgedlev","materlan","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","waisbloc","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","c253am","c253bm","c311","c312","c313","c314","c316","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3")
+vars.missing.xx<-c("studyed","eduyear","edulevel","ethnic1","ethnic2","relat","cgeth1","cgeth2","cgedyrs","cgedlev","materlan","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","waisbloc","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","c253am","c253bm","c311","c312","c313","c314","c316","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3","dbdscore")
 
 ## Variables with missing == 777 | 888 | 996| 997| 998 | 999 <- some of these varaibles have legit scores of 666 hence the separate coding
 vars.missing.xxx<-c("cgage","mmms","score3ms","psyid","ndiag","cintid","digit","c245","c252","c253ay","c253by","c260","c268", "c274","c278","c284","c286a","c287a", "c291","c293","c294","c315","c317","height","consage")
@@ -329,14 +329,14 @@ full.predictors.NAs[,vars.missing.666]<-apply(full.predictors.NAs[,vars.missing.
 full.predictors.NAs[,vars.missing.9.only]<-apply(full.predictors.NAs[,vars.missing.9.only],2,function(x) {x[(x==9)] <- NA; x})
 full.predictors.NAs[,vars.missing80plus]<-apply(full.predictors.NAs[,vars.missing80plus],2,function(x) {x[(x>80)] <- NA; x})
 
-targeted.predictors.NAs <- full.predictors.NAs[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+targeted.predictors.NAs <- full.predictors.NAs[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery,"dbdscore","adlrate")]
 #summary(targeted.predictors.NAs)  
 summary(full.predictors.NAs)  
 
 ### Recoding Outcome variables
 
 ## Variables with missing == 7 | 8 | 9
-out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1", "health2")
+out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1", "health2","adlrate")
 
 ## Variables with missing == 99
 out.missing.xx<-c("zarscore","cesscore")
