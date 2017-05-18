@@ -1,0 +1,366 @@
+---
+title: "Caregiver burden data preparation"
+author: "Hans, Jenny, and Derek"
+date: "May 14, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+require(ExPosition)
+require(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+rinline <- function(code) {
+  sprintf('``` %s ```', code)
+}
+
+
+```
+
+
+# Overview
+
+Our analyses focus on caregiver burden as the *outcome* from a variety of predictors, such as demographics, disorder type, cognitive function, and neuropsychogical profiles. 
+
+# Load data and construct data set
+
+The observations we work with require (1) at least summary scores from Zarit's (caregiver) burden interview (ZBI; CITE) and (2) must not classify as normal or missing in final diagnosis (FINDX). Conditional to the ZBI and FINDX, we include participants who qualify as:
+
+* Dementia (community and institution; cgcc==1 | cgcc==3),
+* Alzheimer's (adcc==1),
+* Parkinson's disease (parkin==1), and
+* Stroke (prstroke==1).
+
+Not included for now (because there are so few amongst this set):
+
+* Amyotrophic lateral sclerosis (als==1),
+* Epilepsy (epilepsy==1), and
+* Multiple sclerosis (ms==1).
+
+Other conditions to consider later (as pseudo-controls): 
+
+* Depression (depressn==1), 
+* Learning Disability (learning==1), 
+* Psychiatric Illness (psychiat==1), and/or 
+* Migraines (migraine==1).
+
+
+The following lines of code will read in the data and include only the subjects outlined in the above conditions.
+```{r load data and cases, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
+  ## data exist one directory above and in a separate folder 
+  ### (in part to avoid committing it to Github for now!)
+CSHA.1991.full <- read.csv("../IPN2017_Case_Comp/Dataset.csv")
+
+  ## Conditionals to extract specific participants
+  ### start with primary outcome of interest: caregiver burden
+CSHA.1991.zarit <- CSHA.1991.full[CSHA.1991.full$zarscore < 99,]
+dim(CSHA.1991.zarit)
+
+  ### Now get all data for above conditions
+  conditions.of.interest <- c( 
+      (CSHA.1991.zarit$cgcc==1 | 
+      CSHA.1991.zarit$cgcc==3 |
+      CSHA.1991.zarit$adcc==1 |
+      CSHA.1991.zarit$parkin==1 |
+      CSHA.1991.zarit$prstroke==1) &
+      (CSHA.1991.zarit$finaldx !=0 & CSHA.1991.zarit$finaldx !=9)
+    )
+CSHA.1991.zarit_disorders <- CSHA.1991.zarit[conditions.of.interest,]  
+dim(CSHA.1991.zarit_disorders)
+```
+
+We now have a subset of observations we should make a pseudo-design matrix of the conditionals above. We want to denote which of the aforementioned categories each individual belongs to:
+
+```{r design matrix, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
+  cols.for.design <- c("CASEID","cgcc","adcc","parkin","prstroke","finaldx")
+  CSHA.1991.zarit_disorders_design <- CSHA.1991.zarit_disorders[,cols.for.design]
+  
+  dim(CSHA.1991.zarit_disorders_design)
+  head(CSHA.1991.zarit_disorders_design)
+  
+```
+
+We can recode some of the values in these columns to something more sensible with a design matrix. The code below to perform the recoding is hidden from the output.
+
+
+```{r sensible design, tidy=TRUE, tidy.opts=list(width.cutoff=55), include=FALSE}
+
+  ##recode cgcc
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("0","N/A",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("1","COMM.CASE",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("2","COMM.CON",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("3","INS.CASE",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)  
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("4","INS.CON",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$cgcc <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$cgcc,fixed=T)  
+  
+  ##recode adcc.
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("0","N/A",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("1","CASE",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("2","CON",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$adcc <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$adcc,fixed=T)
+
+  ##recode parkin
+  CSHA.1991.zarit_disorders_design$parkin <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$parkin,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$parkin <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$parkin,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$parkin <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$parkin,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$parkin <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$parkin,fixed=T)  
+  
+  ##recode prstroke
+  CSHA.1991.zarit_disorders_design$prstroke <- 
+    gsub("1","YES",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$prstroke <-
+    gsub("2","NO",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+  
+  CSHA.1991.zarit_disorders_design$prstroke <-
+    gsub("8","DNK",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$prstroke <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$prstroke,fixed=T)
+  
+ ##recode finaldx
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("0","NORMAL",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("1","COGLOSS",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("2","PROB.ALZ",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("3","POSS.ALZ",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("4","VDEM",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("5","OTHER.DEM",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("6","UNCLASS.DEM",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  CSHA.1991.zarit_disorders_design$finaldx <-
+    gsub("9","MISSING",CSHA.1991.zarit_disorders_design$finaldx,fixed=T)
+
+  
+  colnames(CSHA.1991.zarit_disorders_design) <- c("CASEID","DEMENTIA","ALZ","PD","STROKE","FIN.DX")  
+  rownames(CSHA.1991.zarit_disorders_design) <- CSHA.1991.zarit_disorders_design$CASEID
+  
+  CSHA.design <- makeNominalData(CSHA.1991.zarit_disorders_design[,c("DEMENTIA","ALZ","PD","STROKE","FIN.DX")])
+  
+  
+```
+
+```{r show_design}
+  head(CSHA.1991.zarit_disorders_design)
+  head(CSHA.design)
+  
+  colSums(CSHA.design)
+```
+
+We now have a pseudo-design matrix to identify observation disorder classifications. Now we want to extract just particular sets of columns as predictors and outcomes from our subset. 
+
+
+```{r predsouts, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
+
+  ## predictors
+  ### demographics
+  demographics <- c("studysex","agestrat","studyage","clinage","studyed","eduyear","edulevel","region","race","ethnic1","ethnic2","wbocc","working","institut")
+  ### caregiver demographics
+  cg.demographics <- c("relat","cgsex","cgage","cgeth1","cgeth2","cgedyrs","cgedlev")
+  ### cognition
+  cognition <- c("langabil","mmms","score3ms")
+  ### behavioral disturbance
+  beh.disturb <- c("apathy","wander","violenc","disinhi","otherbe")
+  
+  
+  ### full neuropsych
+    ### neuropsych batteries
+  neuropsych <- c("neurdone","languagn","doi","occup","materlan","difficul","othrcomn","psyid","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","tokencol","waisbloc","digit","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","daily","ndiag","severity","shrtlosn","longlosn","clanguag","cdofint","cintid","c235","c236","c236a","c237","c238","c239","c240","c241","c242","c243","c244","c245","c246","c247","c248","c249","c250","c251","c252","c253","c253am","c253ay","c253bm","c253by","c254","c255","c256","c257","c258","c259","c260","c261","c262","c263","c264","c265","c266","c267","c268","c269","c270","c271","c272","c273","c274","c275","c276","c277","c278","c279","c280","c281","c282","c283","c284","c285","c286","c286a","c287","c287a","c288","c289","c290","c291","c292","c293","c294","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310","c311","c312","c313","c314","c315","c316","c317","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333")
+  
+  #### neuropsych: behavioral ratings
+  np.beh_rate <- c("coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","hearaid","glasses","wheel")
+  #### neuropsych: movement disorders
+  np.move_disorder <- c("gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso")
+  #### neuropsych: memory, fluency, etc...
+  np.battery <- c("wechsler","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","tokencol","waisbloc","digit")
+  #### neuropsych: impairments & diagnoses
+  np.impair_diagnoses <- c("nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","daily","ndiag","severity","shrtlosn","longlosn")
+  #### neuropsych: personality  
+  np.personality <- c("c238","c239","c240","c241","c242","c243","c244","c245","c246")
+  #### neuropsych: memory
+  np.memory <- c("c247","c248","c249","c250","c251","c252","c253","c253am","c253ay")
+  #### neuropsych: general function
+  np.gen_func <- c("c253bm","c253by","c254","c255","c256","c257","c258","c259","c260","c261","c262")
+  #### neuropsych: every day activities
+  np.everyday <- c("c263","c264","c265","c266","c267","c268","c269")
+  #### neuropsych: delerium
+  np.delerium <- c("c270","c271","c272","c273","c274")
+  #### neuropsych: depression
+  np.depress <- c("c275","c276","c277","c278","c279")
+  #### neuropsych: sleep
+  np.sleep <- c("c280","c281","c282","c283","c284","c285")
+  #### neuropsych: paranoia
+  np.paranoia <- c("c286","c286a","c287","c287a")
+  #### neuropsych: cardiovascular
+  np.cv <- c("c288","c289","c290","c291")
+  #### neuropsych: summary
+  np.gen_sum <- c("c292","c293","c294")
+  #### neuropsych: past medical history
+  np.history <- c("c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310")
+  
+  
+  
+  ## variables that exist somewhere between predictors and additional variables of interest
+  ### dementia
+  dementia <- c("shorterm","longterm","abstract","judgemen","aphasia","apraxia","agnosia","construc","change","work","social","relation")
+  ### alzheimer's
+  alz <- c("addement","adcognit","adworsen","adconsci","onsetage","absence")
+  
+  
+  ## possible predictors/mediators/variables of interest or confounds.
+  ### Family history
+  famhistory <- c("twin","samesex","identic","familyhs","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3")
+  ### languages spoken
+  languages <- c("english","french","italian","german","spanish","iceland","ukrain","chinese","japanese","danish","arabic","urdu","otherlan")
+  ### health issues
+  health.drugs <- c("thycond","attack","oheart","leukemia","cancer","proxdiab","hbpyr","drug","height","sweight")
+  ### regular substance use -- COMBINE SMOKING & DRINKING & CAFFEIENE/SUGAR
+  substances <- c("coffee","tea","drinks","smoke","pipe","cigars","beer","wine","spirits")
+  ### head injuries
+  head.inj <- c("consloss","consage")
+  ### depression
+  depress <- c("sad","interest","appetite","lossweig","asleep","awaken","allday","tiredall","move","worthles","suicide","most","impress")
+
+  
+  ## outcomes
+  ### caregiver questions/situation
+  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore")
+  ### caregiver "felt"
+  cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
+  
+  
+  targeted.predictors <- CSHA.1991.zarit_disorders[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+  
+  full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych)]  
+  
+  outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
+  
+  dim(targeted.predictors)
+  dim(full.predictors)
+  dim(outcomes)
+  
+  
+```
+
+
+For our project we should begin with just the two sets of variables identified as `target.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
+
+```{r recoding missingness, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
+## Recoding Missing Values with NA
+## Predictor Variables (full set)
+
+## Variables with missing == 7 | 8 | 9
+vars.missing.x<- c("region","race","wbocc","working","institut","cgsex","langabil","apathy","wander","violenc","disinhi","otherbe","neurdone","languagn","occup","difficul","othrcomn","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","tokencol","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","daily","severity","shrtlosn","longlosn","clanguag","c235","c236a","c238","c239","c240","c241","c242","c243","c244","c246","c247","c248","c249","c250","c251","c253","c254","c255","c256","c257","c258","c259","c261","c262","c263","c264","c265","c266","c267","c269","c270","c271","c272","c273","c275","c276","c277","c279","c280","c281","c282","c283","c285","c286","c287","c288","c289","c290","c292","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310",dementia,alz,"twin","samesex","identic","familyhs",languages,"thycond","attack","oheart","leukemia","cancer","proxdiab","drug",substances,"consloss",depress)
+
+ ## Variables with missing == 66 | 77 | 88 | 98 | 99
+vars.missing.xx<-c("studyed","eduyear","edulevel","ethnic1","ethnic2","relat","cgeth1","cgeth2","cgedyrs","cgedlev","materlan","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","waisbloc","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","c253am","c253bm","c311","c312","c313","c314","c316","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3")
+
+## Variables with missing == 777 | 888 | 996| 997| 998 | 999 <- some of these varaibles have legit scores of 666 hence the separate coding
+vars.missing.xxx<-c("cgage","mmms","score3ms","psyid","ndiag","cintid","digit","c245","c252","c253ay","c253by","c260","c268", "c274","c278","c284","c286a","c287a", "c291","c293","c294","c315","c317","height","consage")
+
+## Variables with missing = 999999
+vars.missing.xxxxxx<-c("doi","cdofint")
+
+## Variables with 0 coded as "skipped" or "miscoded" or "not applicable"
+vars.skipped.0<-c("ethnic2","cgeth2","insight","napraxia","ndisturb","delirium","majordep","c315","c316","c317","samesex","identic","sen1","consloss","consage")
+
+## Variables with 6 coded as missing (visual/hearing/motor/blind)
+vars.missing.6<-c(beh.disturb,"tokencol","nshorter","nverbal","naphasia","napraxia","nagnosia","nconstru","ndisturb","severity","shrtlosn","longlosn","impress")
+vars.missing.5<-c(beh.disturb,"impress")
+vars.missing.4<-c(beh.disturb)
+## Variables with 666 coded as missing(visual/hearing)
+vars.missing.666<-c("digit","c253ay","c253by")
+
+## random variables with very special coding
+vars.missing.9.only<-c("c236","c237")  ## 7 & 8 are actual values
+
+## vars with missing code above 80 (decimal coding)
+vars.missing80plus<-c("hbpyr","sweight")
+
+############
+full.predictors.NAs<-full.predictors
+
+full.predictors.NAs[,vars.missing.x]<-apply(full.predictors.NAs[,vars.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
+full.predictors.NAs[,vars.missing.xx]<-apply(full.predictors.NAs[,vars.missing.xx],2,function(x) {x[(x==77 | x==88 | x==99 | x==66 | x == 98)] <- NA; x})
+full.predictors.NAs[,vars.missing.xxx]<-apply(full.predictors.NAs[,vars.missing.xxx],2,function(x) {x[(x==777 | x==888 | x==999 | x==996 | x == 997 | x == 998)] <- NA; x})
+full.predictors.NAs[,vars.missing.xxxxxx]<-apply(full.predictors.NAs[,vars.missing.xxxxxx],2,function(x) {x[(x==999999)] <- NA; x})
+full.predictors.NAs[,vars.skipped.0]<-apply(full.predictors.NAs[,vars.skipped.0],2,function(x) {x[(x==0)] <- NA; x})
+full.predictors.NAs[,vars.missing.6]<-apply(full.predictors.NAs[,vars.missing.6],2,function(x) {x[(x==6)] <- NA; x})
+full.predictors.NAs[,vars.missing.5]<-apply(full.predictors.NAs[,vars.missing.5],2,function(x) {x[(x==5)] <- NA; x})
+full.predictors.NAs[,vars.missing.4]<-apply(full.predictors.NAs[,vars.missing.4],2,function(x) {x[(x==4)] <- NA; x})
+full.predictors.NAs[,vars.missing.666]<-apply(full.predictors.NAs[,vars.missing.666],2,function(x) {x[(x==666)] <- NA; x})
+full.predictors.NAs[,vars.missing.9.only]<-apply(full.predictors.NAs[,vars.missing.9.only],2,function(x) {x[(x==9)] <- NA; x})
+full.predictors.NAs[,vars.missing80plus]<-apply(full.predictors.NAs[,vars.missing80plus],2,function(x) {x[(x>80)] <- NA; x})
+
+targeted.predictors.NAs <- full.predictors.NAs[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+#summary(targeted.predictors.NAs)  
+summary(full.predictors.NAs)  
+
+### Recoding Outcome variables
+
+## Variables with missing == 7 | 8 | 9
+out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing")
+
+## Variables with missing == 99
+out.missing.xx<-c("zarscore","cesscore")
+
+###
+outcomes.NAs<-outcomes
+
+outcomes.NAs[,out.missing.x]<-apply(outcomes.NAs[,out.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
+outcomes.NAs[,out.missing.xx]<-apply(outcomes.NAs[,out.missing.xx],2,function(x) {x[(x==99)] <- NA; x})
+
+summary(outcomes.NAs)
+```
+
+Recoding notes and things to be mindful of:
+
+* In general, 7 = refused; 8 = do not know; 9 = missing (all coded as NA in final dataset)
+* For neuropsych, 66 = visual/hearing impairment
+* all beh.disturb vars have additional coding scheme: not relavent = 4; dnk = 5; could not answer = 6; missing = 9
+* coding for score3ms is slightly different for 777 and 888 (see codebook); but coded as NAs for now
+
+
+
+
+
+
+
+
