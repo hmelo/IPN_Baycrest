@@ -261,7 +261,7 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   
   ## outcomes
   ### caregiver questions/situation
-  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore")
+  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore","health1", "health2")
   ### caregiver "felt"
   cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
   
