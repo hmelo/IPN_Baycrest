@@ -2,7 +2,9 @@
 title: "Caregiver burden data preparation"
 author: "Hans, Jenny, and Derek"
 date: "May 14, 2017"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -270,11 +272,8 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   
   full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych,"dbdscore", "adlrate")]  
   
-<<<<<<< HEAD
   full.outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
-=======
   outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt,"adlrate")]
->>>>>>> origin/master
   
   dim(targeted.predictors)
   dim(full.predictors)
@@ -408,11 +407,8 @@ final.predictors$otherbe <- as.factor(final.predictors$otherbe)
 ```
 
 
-<<<<<<< HEAD
 
 For our project we should begin with just the two sets of variables identified as `final.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
-=======
-For our project we should begin with just the two sets of variables identified as `target.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
 
 ```{r recoding missingness, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
 ## Recoding Missing Values with NA
@@ -488,12 +484,3 @@ Recoding notes and things to be mindful of:
 * For neuropsych, 66 = visual/hearing impairment
 * all beh.disturb vars have additional coding scheme: not relavent = 4; dnk = 5; could not answer = 6; missing = 9
 * coding for score3ms is slightly different for 777 and 888 (see codebook); but coded as NAs for now
-
-
-
-
-
-
-
-
->>>>>>> origin/master
