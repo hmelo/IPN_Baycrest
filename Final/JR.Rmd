@@ -1,0 +1,78 @@
+---
+title: "IPN Analyses"
+author: "Jenny Rieck"
+date: "May 19, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+require(ExPosition)
+require(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+fast.csci <- function(DATA, REGRESSORS=NULL, rows, center=T, scale=F, main.effects.only=F, impute=T){
+	
+  ## center and/or scale the data before hand.
+	DATA <- expo.scale(DATA[rows,],center=center,scale=scale)
+	
+	## correct (residualize) the data by confounds
+	if(!is.null(REGRESSORS)){
+  	if(main.effects.only){
+  		this.formula <- "x~."
+  	}else{
+  		this.formula <- paste0("x~.^",ncol(REGRESSORS[rows,]))
+  	}	  
+  	DATA <- apply(
+  					DATA,
+  					2,
+  					function(x){ 
+  						resid( lm( as.formula(this.formula), data = REGRESSORS[rows,], na.action = na.exclude) )
+  					}
+  			)
+	}
+	
+	
+	
+	## impute to mean
+	if(impute){
+		mean.impute(DATA)
+	}
+	
+  ## replace tiny values by 0
+	DATA[which( abs(DATA) < .Machine$double.eps )] <- 0	
+	return(DATA)
+}
+
+mean.impute <- function(DATA){
+  DATA <- apply(DATA,2,function(x){ x[(is.na(x))] <- mean(x,na.rm = T); x })
+  return(DATA)
+}
+
+load('./fin.des.rda')
+load('./fin.des.nom.rda')
+load('./fin.outs.rda')
+load('./fin.preds.rda')
+```
+
+
+# Introduction 
+
+# Code & Analyses
+
+An example of `mean.impute` and `fast.csci` in use. We will first use `mean.impute` to impute missing data to the mean for `health1`. We will then use `fast.csci` to correct `zarscore` and `health1` by the age and sex of the participant. NOTE: `fast.csci` has to be used with some caution. Be very careful if using this to correct values when there are mixed data (e.g., predictors are mixes of factors and numeric) and only use it on outcomes that are numeric. Further, `fast.csci` requires more than 1 predictor. If you have only a single predictor you can use something like: `resid(lm(outcome~predictor,na.action = na.exclude))`
+
+```{r impute_csci_example}
+
+  health1_impute <- mean.impute(as.matrix(fin.outs[,"health1"]))
+  summary(cbind(fin.outs[,"health1"],health1_impute))
+
+  fin.preds$clinage <- as.numeric(fin.preds$clinage)
+  fin.preds$studysex <- as.factor(fin.preds$studysex)
+  health.corrected <- fast.csci(fin.outs[,c("health1","zarscore")],fin.preds[,c("clinage","studysex")],rownames(fin.preds),T,F,T,T)
+ head(health.corrected)
+ 
+```
+
+# Conclusions
