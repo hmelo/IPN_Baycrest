@@ -7,7 +7,7 @@ output:
   html_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup, echo=F}
 require(ExPosition)
 require(knitr)
 knitr::opts_chunk$set(echo = TRUE)
@@ -16,8 +16,51 @@ rinline <- function(code) {
   sprintf('``` %s ```', code)
 }
 
+check.drop.missingness <- function(data.in,col.freq=.1,row.freq=.1,iters=Inf){
+	
+	counter <- 1
+	keepLooping <- T
+	
+	while( keepLooping ){
+	
+		##these two things need to be done over and over...
+		col.missing <- colSums(is.na(data.in)) / nrow(data.in)
+		col.droppers <- which( col.missing >= col.freq )
+		if( length(col.droppers) > 0 ){
+			data.in <- data.in[,-c(col.droppers)]
+		}
+		
+		row.missing <- rowSums(is.na(data.in)) / ncol(data.in)
+		row.droppers <- which( row.missing >= row.freq )
+		if( length(row.droppers) > 0 ){
+			data.in <- data.in[-c(row.droppers),]
+		}		
+		
+		print( paste0("Iter: ", counter) )
+		counter <- counter + 1		
+				
+		if( length(col.droppers) == 0 & length(row.droppers) == 0 ){
+			print('Missingness acceptable: Stopping.')
+			keepLooping <- F
+		}
+
+	
+		if(counter > iters){	## prevents us from possibly eliminating the entire data set...
+			print('Maximum iterations: Stopping')
+			keepLooping <- F
+		}	
+	
+	}
+
+	return( list(data.out=data.in,final.col.missing=colSums(is.na(data.in)) / nrow(data.in),final.row.missing=rowSums(is.na(data.in)) / ncol(data.in)) ) 
+	
+}
 
 ```
+
+# This file will be deprecated after Friday May 19th.
+
+This file was only for us to get our data up and running with some simple recoding and references. Once the final data sets are generated from here, do not use this file, intead use the respective RMarkdown files for your project.
 
 
 # Overview
@@ -263,7 +306,7 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   
   ## outcomes
   ### caregiver questions/situation
-  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore","health1", "health2")
+  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore","health1")#, "health2")
   ### caregiver "felt"
   cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
   
@@ -273,7 +316,6 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych,"dbdscore", "adlrate")]  
   
   full.outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
-  outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt,"adlrate")]
   
   dim(targeted.predictors)
   dim(full.predictors)
@@ -464,18 +506,18 @@ summary(full.predictors.NAs)
 ### Recoding Outcome variables
 
 ## Variables with missing == 7 | 8 | 9
-out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1", "health2","adlrate")
+out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1")#, "health2")
 
 ## Variables with missing == 99
 out.missing.xx<-c("zarscore","cesscore")
 
 ###
-outcomes.NAs<-outcomes
+full.outcomes.NAs<-full.outcomes
 
-outcomes.NAs[,out.missing.x]<-apply(outcomes.NAs[,out.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
-outcomes.NAs[,out.missing.xx]<-apply(outcomes.NAs[,out.missing.xx],2,function(x) {x[(x==99)] <- NA; x})
+full.outcomes.NAs[,out.missing.x]<-apply(full.outcomes.NAs[,out.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
+full.outcomes.NAs[,out.missing.xx]<-apply(full.outcomes.NAs[,out.missing.xx],2,function(x) {x[(x==99)] <- NA; x})
 
-summary(outcomes.NAs)
+summary(full.outcomes.NAs)
 ```
 
 Recoding notes and things to be mindful of:
@@ -484,3 +526,118 @@ Recoding notes and things to be mindful of:
 * For neuropsych, 66 = visual/hearing impairment
 * all beh.disturb vars have additional coding scheme: not relavent = 4; dnk = 5; could not answer = 6; missing = 9
 * coding for score3ms is slightly different for 777 and 888 (see codebook); but coded as NAs for now
+
+
+
+
+We need to work from `full.outcomes.NAs` and `full.predictors.NAs`
+
+
+```{r missingness}
+  outcome.missing.clean.10 <- check.drop.missingness(full.outcomes.NAs,col.freq=.1,row.freq=.1,iters=Inf)
+  predictors.missing.clean.10 <- check.drop.missingness(full.predictors.NAs,col.freq=.1,row.freq=.1,iters=Inf)
+  
+  outcome.missing.clean.20 <- check.drop.missingness(full.outcomes.NAs,col.freq=.2,row.freq=.2,iters=Inf)
+  predictors.missing.clean.20 <- check.drop.missingness(full.predictors.NAs,col.freq=.2,row.freq=.2,iters=Inf)  
+  
+  
+  outcome.missing.clean.25.25 <- check.drop.missingness(full.outcomes.NAs,col.freq=.25,row.freq=.25,iters=Inf)  
+  predictors.missing.clean.25.25 <- check.drop.missingness(full.predictors.NAs,col.freq=.25,row.freq=.25,iters=Inf)
+  
+  dim(full.outcomes.NAs)
+  #dim(outcome.missing.clean.10$data.out)
+  #dim(outcome.missing.clean.20$data.out)
+  dim(outcome.missing.clean.25.25$data.out)
+  
+  
+  dim(full.predictors.NAs)
+  #dim(predictors.missing.clean.10$data.out)
+  dim(predictors.missing.clean.20$data.out)
+  dim(predictors.missing.clean.25.25$data.out)
+  
+  
+  #colnames(predictors.missing.clean.10$data.out)
+  #colnames(predictors.missing.clean.20$data.out)
+  colnames(predictors.missing.clean.25.25$data.out)
+  
+  colnames(outcome.missing.clean.25.25$data.out)
+```
+
+
+```{r real final predictors}
+dim(predictors.missing.clean.25.25$data.out[,c("CASEID","studysex", "clinage", "studyed", "cgsex", "cgage", "cgedyrs", "cgedlev", "apathy", "wander", "violenc", "disinhi", "otherbe", "sad", "interest", "appetite", "lossweig", "asleep", "awaken", "allday", "tiredall", "move", "worthles", "suicide", "impress", "shorterm", "longterm", "abstract", "judgemen", "aphasia", "apraxia", "change", "work", "social", "relation", "dbdscore", "adlrate",paste0("c",238:250),paste0("c",254:269),paste0("c",275:277),paste0("c",280:283),paste0("c",286:290),paste0("c",292:294),paste0("c",301:309),paste0("c",318:321))])
+
+
+summary(as.factor(CSHA.1991.zarit[CSHA.1991.zarit[,"CASEID"] %in% predictors.missing.clean.25.25$data.out[,c("CASEID")],c("painkill")]))
+
+
+
+summary(as.factor(CSHA.1991.zarit[CSHA.1991.zarit[,"CASEID"] %in% outcome.missing.clean.25.25$data.out[,c("CASEID")],c("health1")]))
+
+
+length(intersect(outcome.missing.clean.25.25$data.out[,c("CASEID")],predictors.missing.clean.25.25$data.out[,c("CASEID")]))
+  ## and then get all the previously listed variables from above...
+
+### send/include fast.csci function.
+
+## need to add in a recoded health1 to outcomes and a recoded painkill to predictors
+
+final.participants <- as.character(intersect(outcome.missing.clean.25.25$data.out[,c("CASEID")],predictors.missing.clean.25.25$data.out[,c("CASEID")]))
+
+  ## I need to add painkill.
+fin.preds <- predictors.missing.clean.25.25$data.out[,c("CASEID","studysex", "clinage", "studyed", "cgsex", "cgage", "cgedyrs", "cgedlev", "apathy", "wander", "violenc", "disinhi", "otherbe", "sad", "interest", "appetite", "lossweig", "asleep", "awaken", "allday", "tiredall", "move", "worthles", "suicide", "impress", "shorterm", "longterm", "abstract", "judgemen", "aphasia", "apraxia", "change", "work", "social", "relation", "dbdscore", "adlrate",paste0("c",238:250),paste0("c",254:269),paste0("c",275:277),paste0("c",280:283),paste0("c",286:290),paste0("c",292:294),paste0("c",301:309),paste0("c",318:321))]
+rownames(fin.preds) <- as.character(fin.preds[,"CASEID"])
+fin.preds <- fin.preds[,-c(which(colnames(fin.preds) == "CASEID"))]
+fin.preds <- fin.preds[final.participants,]
+
+painkill <- CSHA.1991.zarit[,c("CASEID","painkill")]
+rownames(painkill) <- as.character(painkill[,"CASEID"])
+#head(rownames(painkill))
+#summary(as.factor(painkill[final.participants,"painkill"]))
+fin.preds <- cbind(fin.preds[final.participants,],as.factor(painkill[final.participants,"painkill"]))
+#colnames(fin.preds)[ncol(fin.preds)]
+colnames(fin.preds)[ncol(fin.preds)] <- "painkill"
+
+dim(fin.preds)
+summary(fin.preds)
+
+fin.outs <- outcome.missing.clean.25.25$data.out
+rownames(fin.outs) <- as.character(fin.outs[,"CASEID"])
+fin.outs <- fin.outs[,-c(which(colnames(fin.outs) == "CASEID"))]
+fin.outs <- fin.outs[final.participants,]
+dim(fin.outs)
+summary(fin.outs)
+
+
+head(final.participants)
+head(as.character(final.participants))
+head(CSHA.1991.zarit_disorders_design[,"CASEID"])
+head(rownames(CSHA.1991.zarit_disorders_design))
+
+#rownames(CSHA.1991.zarit_disorders_design) <- CSHA.1991.zarit_disorders_design[,"CASEID"]
+fin.des <- CSHA.1991.zarit_disorders_design[as.character(final.participants),2:6]
+dim(fin.des)
+head(fin.des)
+
+fin.des.nom <- makeNominalData(fin.des)
+dim(fin.des.nom)
+colSums(fin.des.nom)
+
+
+## FIN REORDERING
+fin.des <- fin.des[rownames(fin.des),]
+head(fin.des)
+fin.des.nom <- fin.des.nom[rownames(fin.des),]
+head(fin.des.nom)
+fin.preds <- fin.preds[rownames(fin.des),]
+head(fin.preds)[,1:5]
+fin.outs <- fin.outs[rownames(fin.des),]
+head(fin.outs)[,1:5]
+
+save(fin.des,file='./Final/fin.des.rda')
+save(fin.des.nom,file='./Final/fin.des.nom.rda')
+save(fin.preds,file='./Final/fin.preds.rda')
+save(fin.outs,file='./Final/fin.outs.rda')
+
+```
+
