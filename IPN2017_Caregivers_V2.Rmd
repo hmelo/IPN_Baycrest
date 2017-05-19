@@ -270,7 +270,7 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   
   full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych,"dbdscore", "adlrate")]  
   
-  outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
+  outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt,"adlrate")]
   
   dim(targeted.predictors)
   dim(full.predictors)
