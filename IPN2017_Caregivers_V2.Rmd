@@ -306,7 +306,7 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   
   ## outcomes
   ### caregiver questions/situation
-  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore","health1")#, "health2")
+  cg.unpaid <- c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","zarscore","health1", "health2")
   ### caregiver "felt"
   cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
   
@@ -506,7 +506,7 @@ summary(full.predictors.NAs)
 ### Recoding Outcome variables
 
 ## Variables with missing == 7 | 8 | 9
-out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1")#, "health2")
+out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1", "health2")
 
 ## Variables with missing == 99
 out.missing.xx<-c("zarscore","cesscore")

@@ -56,23 +56,505 @@ load('./fin.outs.rda')
 load('./fin.preds.rda')
 ```
 
+# Preliminaries 
+
+This part contains a few notes and blocks of code that will likely go unseen in the PDF but available in the RMarkdown document.
+
+```{r preliminary_clean_up, echo=F}
+
+fin.preds$studysex <- ifelse(fin.preds$studysex==1,"MALE","FEMALE")
+fin.preds$studysex <- as.factor(fin.preds$studysex)
+
+fin.preds$clinage <- ifelse(fin.preds$clinage>=777,NA,fin.preds$clinage)
+fin.preds$clinage <- as.numeric(fin.preds$clinage)
+
+fin.preds$studyed <- ifelse(fin.preds$studyed>=99,NA,fin.preds$studyed)
+fin.preds$studyed <- as.numeric(fin.preds$studyed) ## consider factorizing this if distribution is weird.
+
+fin.preds$cgsex <- ifelse(fin.preds$cgsex==1,"MALE","FEMALE")
+fin.preds$cgsex <- as.factor(fin.preds$cgsex)
+
+fin.preds$cgage <- ifelse(fin.preds$cgage==999,NA,fin.preds$cgage)
+fin.preds$cgage <- as.numeric(fin.preds$cgage)
+
+fin.preds$cgedyrs <- ifelse(fin.preds$cgedyrs>=88,NA,fin.preds$cgedyrs)
+fin.preds$cgedyrs <- as.numeric(fin.preds$cgedyrs)
+
+fin.preds$cgedlev <- ifelse(fin.preds$cgedlev>=77,NA,fin.preds$cgedlev)
+fin.preds$cgedlev[fin.preds$cgedlev==1 | fin.preds$cgedlev==2 | fin.preds$cgedlev==3 | fin.preds$cgedlev==4] <- "<HS"
+fin.preds$cgedlev[fin.preds$cgedlev==5] <- "HS"
+fin.preds$cgedlev[fin.preds$cgedlev==6 | fin.preds$cgedlev==7 | fin.preds$cgedlev==8] <- "<BACHELORS"
+fin.preds$cgedlev[fin.preds$cgedlev==9] <- "BACHELORS"
+fin.preds$cgedlev[fin.preds$cgedlev==10] <- "MASTERS"  
+fin.preds$cgedlev[fin.preds$cgedlev==11] <- "PHD"    
+fin.preds$cgedlev[fin.preds$cgedlev==12] <- "OTHER"  
+fin.preds$cgedlev <- as.factor(fin.preds$cgedlev)
+
+  
+fin.preds$apathy <- ifelse(fin.preds$apathy >= 5, NA, fin.preds$apathy)
+fin.preds$apathy[fin.preds$apathy==1] <- "YES"
+fin.preds$apathy[fin.preds$apathy==2] <- "MAYBE"
+fin.preds$apathy[fin.preds$apathy==3] <- "NO"
+fin.preds$apathy[fin.preds$apathy==4] <- "NOT_RELEVANT"
+fin.preds$apathy <- as.factor(fin.preds$apathy)
+
+fin.preds$wander <- ifelse(fin.preds$wander >= 5, NA, fin.preds$wander)
+fin.preds$wander[fin.preds$wander==1] <- "YES"
+fin.preds$wander[fin.preds$wander==2] <- "MAYBE"
+fin.preds$wander[fin.preds$wander==3] <- "NO"
+fin.preds$wander[fin.preds$wander==4] <- "NOT_RELEVANT"
+fin.preds$wander <- as.factor(fin.preds$wander)
+
+fin.preds$violenc <- ifelse(fin.preds$violenc >= 5, NA, fin.preds$violenc)
+fin.preds$violenc[fin.preds$violenc==1] <- "YES"
+fin.preds$violenc[fin.preds$violenc==2] <- "MAYBE"
+fin.preds$violenc[fin.preds$violenc==3] <- "NO"
+fin.preds$violenc[fin.preds$violenc==4] <- "NOT_RELEVANT"
+fin.preds$violenc <- as.factor(fin.preds$violenc)
+
+fin.preds$disinhi <- ifelse(fin.preds$disinhi >= 5, NA, fin.preds$disinhi)
+fin.preds$disinhi[fin.preds$disinhi==1] <- "YES"
+fin.preds$disinhi[fin.preds$disinhi==2] <- "MAYBE"
+fin.preds$disinhi[fin.preds$disinhi==3] <- "NO"
+fin.preds$disinhi[fin.preds$disinhi==4] <- "NOT_RELEVANT"
+fin.preds$disinhi <- as.factor(fin.preds$disinhi)
+
+fin.preds$otherbe <- ifelse(fin.preds$otherbe >= 5, NA, fin.preds$otherbe)
+fin.preds$otherbe[fin.preds$otherbe==1] <- "YES"
+fin.preds$otherbe[fin.preds$otherbe==2] <- "MAYBE"
+fin.preds$otherbe[fin.preds$otherbe==3] <- "NO"
+fin.preds$otherbe[fin.preds$otherbe==4] <- "NOT_RELEVANT"
+fin.preds$otherbe <- as.factor(fin.preds$otherbe)
+
+fin.preds$sad <- ifelse(fin.preds$sad >= 8, NA, fin.preds$sad)
+fin.preds$sad[fin.preds$sad==0] <- "NO"
+fin.preds$sad[fin.preds$sad==1] <- "YES"
+fin.preds$sad <- as.factor(fin.preds$sad)
+
+fin.preds$interest <- ifelse(fin.preds$interest >= 8, NA, fin.preds$interest)
+fin.preds$interest[fin.preds$interest==0] <- "NO"
+fin.preds$interest[fin.preds$interest==1] <- "YES"
+fin.preds$interest <- as.factor(fin.preds$interest)
+
+fin.preds$appetite <- ifelse(fin.preds$appetite >= 8, NA, fin.preds$appetite)
+fin.preds$appetite[fin.preds$appetite==0] <- "NO"
+fin.preds$appetite[fin.preds$appetite==1] <- "YES"
+fin.preds$appetite <- as.factor(fin.preds$appetite)
+
+fin.preds$lossweig <- ifelse(fin.preds$lossweig >= 8, NA, fin.preds$lossweig)
+fin.preds$lossweig[fin.preds$lossweig==0] <- "NO"
+fin.preds$lossweig[fin.preds$lossweig==1] <- "YES"
+fin.preds$lossweig <- as.factor(fin.preds$lossweig)
+
+fin.preds$asleep <- ifelse(fin.preds$asleep >= 8, NA, fin.preds$asleep)
+fin.preds$asleep[fin.preds$asleep==0] <- "NO"
+fin.preds$asleep[fin.preds$asleep==1] <- "YES"
+fin.preds$asleep <- as.factor(fin.preds$asleep)
+
+fin.preds$awaken <- ifelse(fin.preds$awaken >= 8, NA, fin.preds$awaken)
+fin.preds$awaken[fin.preds$awaken==0] <- "NO"
+fin.preds$awaken[fin.preds$awaken==1] <- "YES"
+fin.preds$awaken <- as.factor(fin.preds$awaken)
+
+fin.preds$allday <- ifelse(fin.preds$allday >= 8, NA, fin.preds$allday)
+fin.preds$allday[fin.preds$allday==0] <- "NO"
+fin.preds$allday[fin.preds$allday==1] <- "YES"
+fin.preds$allday <- as.factor(fin.preds$allday)
+
+fin.preds$tiredall <- ifelse(fin.preds$tiredall >= 8, NA, fin.preds$tiredall)
+fin.preds$tiredall[fin.preds$tiredall==0] <- "NO"
+fin.preds$tiredall[fin.preds$tiredall==1] <- "YES"
+fin.preds$tiredall <- as.factor(fin.preds$tiredall)
+
+fin.preds$move <- ifelse(fin.preds$move >= 8, NA, fin.preds$move)
+fin.preds$move[fin.preds$move==0] <- "NO"
+fin.preds$move[fin.preds$move==1] <- "YES"
+fin.preds$move <- as.factor(fin.preds$move)
+
+fin.preds$worthles <- ifelse(fin.preds$worthles >= 8, NA, fin.preds$worthles)
+fin.preds$worthles[fin.preds$worthles==0] <- "NO"
+fin.preds$worthles[fin.preds$worthles==1] <- "YES"
+fin.preds$worthles <- as.factor(fin.preds$worthles)
+
+fin.preds$suicide <- ifelse(fin.preds$suicide >= 8, NA, fin.preds$suicide)
+fin.preds$suicide[fin.preds$suicide==0] <- "NO"
+fin.preds$suicide[fin.preds$suicide==1] <- "YES"
+fin.preds$suicide <- as.factor(fin.preds$suicide)
+
+fin.preds$impress <- ifelse(fin.preds$impress >= 5, NA, fin.preds$impress)
+fin.preds$impress[fin.preds$impress==1] <- "YES"
+fin.preds$impress[fin.preds$impress==2] <- "MAYBE"
+fin.preds$impress[fin.preds$impress==3] <- "NO"
+fin.preds$impress[fin.preds$impress==4] <- "NOT_RELEVANT"
+fin.preds$impress <- as.factor(fin.preds$impress)
+
+fin.preds$shorterm <- ifelse(fin.preds$shorterm >= 8, NA, fin.preds$shorterm)
+fin.preds$shorterm[fin.preds$shorterm==0] <- "NO"
+fin.preds$shorterm[fin.preds$shorterm==1] <- "YES"
+fin.preds$shorterm <- as.factor(fin.preds$shorterm)
+
+fin.preds$longterm <- ifelse(fin.preds$longterm >= 8, NA, fin.preds$longterm)
+fin.preds$longterm[fin.preds$longterm==0] <- "NO"
+fin.preds$longterm[fin.preds$longterm==1] <- "YES"
+fin.preds$longterm <- as.factor(fin.preds$longterm)
+
+fin.preds$abstract <- ifelse(fin.preds$abstract >= 8, NA, fin.preds$abstract)
+fin.preds$abstract[fin.preds$abstract==0] <- "NO"
+fin.preds$abstract[fin.preds$abstract==1] <- "YES"
+fin.preds$abstract <- as.factor(fin.preds$abstract)
+
+fin.preds$judgemen <- ifelse(fin.preds$judgemen >= 8, NA, fin.preds$judgemen)
+fin.preds$judgemen[fin.preds$judgemen==0] <- "NO"
+fin.preds$judgemen[fin.preds$judgemen==1] <- "YES"
+fin.preds$judgemen <- as.factor(fin.preds$judgemen)
+
+fin.preds$aphasia <- ifelse(fin.preds$aphasia >= 8, NA, fin.preds$aphasia)
+fin.preds$aphasia[fin.preds$aphasia==0] <- "NO"
+fin.preds$aphasia[fin.preds$aphasia==1] <- "YES"
+fin.preds$aphasia <- as.factor(fin.preds$aphasia)
+
+fin.preds$apraxia <- ifelse(fin.preds$apraxia >= 8, NA, fin.preds$apraxia)
+fin.preds$apraxia[fin.preds$apraxia==0] <- "NO"
+fin.preds$apraxia[fin.preds$apraxia==1] <- "YES"
+fin.preds$apraxia <- as.factor(fin.preds$apraxia)
+
+fin.preds$change <- ifelse(fin.preds$change >= 8, NA, fin.preds$change)
+fin.preds$change[fin.preds$change==0] <- "NO"
+fin.preds$change[fin.preds$change==1] <- "YES"
+fin.preds$change <- as.factor(fin.preds$change)
+
+fin.preds$work <- ifelse(fin.preds$work >= 8, NA, fin.preds$work)
+fin.preds$work[fin.preds$work==0] <- "NO"
+fin.preds$work[fin.preds$work==1] <- "YES"
+fin.preds$work <- as.factor(fin.preds$work)
+
+fin.preds$social <- ifelse(fin.preds$social >= 8, NA, fin.preds$social)
+fin.preds$social[fin.preds$social==0] <- "NO"
+fin.preds$social[fin.preds$social==1] <- "YES"
+fin.preds$social <- as.factor(fin.preds$social)
+
+fin.preds$relation <- ifelse(fin.preds$relation >= 8, NA, fin.preds$relation)
+fin.preds$relation[fin.preds$relation==0] <- "NO"
+fin.preds$relation[fin.preds$relation==1] <- "YES"
+fin.preds$relation <- as.factor(fin.preds$relation)
+
+fin.preds$dbdscore <- ifelse(fin.preds$dbdscore == 99, NA, fin.preds$dbdscore)
+fin.preds$dbdscore <- as.numeric(fin.preds$dbdscore)
+
+fin.preds$adlrate[fin.preds$adlrate==2] <- "EXCELLENT.or.GOOD"
+fin.preds$adlrate[fin.preds$adlrate==3] <- "MILD.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==4] <- "MODERATE.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==5] <- "SEVERE.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==6] <- "TOTAL.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==9] <- NA
+fin.preds$adlrate <- as.factor(fin.preds$adlrate)
+
+fin.preds$c238 <- ifelse(fin.preds$c238 >= 8, NA, fin.preds$c238)
+fin.preds$c238[fin.preds$c238==0] <- "NO"
+fin.preds$c238[fin.preds$c238==1] <- "YES"
+fin.preds$c238 <- as.factor(fin.preds$c238)
+
+fin.preds$c239 <- ifelse(fin.preds$c239 >= 8, NA, fin.preds$c239)
+fin.preds$c239[fin.preds$c239==0] <- "NO"
+fin.preds$c239[fin.preds$c239==1] <- "YES"
+fin.preds$c239 <- as.factor(fin.preds$c239)
+
+fin.preds$c240 <- ifelse(fin.preds$c240 >= 8, NA, fin.preds$c240)
+fin.preds$c240[fin.preds$c240==0] <- "NO"
+fin.preds$c240[fin.preds$c240==1] <- "YES"
+fin.preds$c240 <- as.factor(fin.preds$c240)
+
+fin.preds$c241 <- ifelse(fin.preds$c241 >= 8, NA, fin.preds$c241)
+fin.preds$c241[fin.preds$c241==0] <- "NO"
+fin.preds$c241[fin.preds$c241==1] <- "LESS"
+fin.preds$c241[fin.preds$c241==2] <- "MORE"
+fin.preds$c241 <- as.factor(fin.preds$c241)
+
+fin.preds$c242 <- ifelse(fin.preds$c242 >= 8, NA, fin.preds$c242)
+fin.preds$c242[fin.preds$c242==0] <- "NO"
+fin.preds$c242[fin.preds$c242==1] <- "LESS"
+fin.preds$c242[fin.preds$c242==2] <- "MORE"
+fin.preds$c242 <- as.factor(fin.preds$c242)
+
+fin.preds$c243 <- ifelse(fin.preds$c243 >= 8, NA, fin.preds$c243)
+fin.preds$c243[fin.preds$c243==0] <- "NO"
+fin.preds$c243[fin.preds$c243==1] <- "YES"
+fin.preds$c243 <- as.factor(fin.preds$c243)
+
+fin.preds$c244 <- ifelse(fin.preds$c244 >= 8, NA, fin.preds$c244)
+fin.preds$c244[fin.preds$c244==0] <- "NO"
+fin.preds$c244[fin.preds$c244==1] <- "LESS"
+fin.preds$c244[fin.preds$c244==2] <- "MORE"
+fin.preds$c244 <- as.factor(fin.preds$c244)
+
+fin.preds$c246 <- ifelse(fin.preds$c246 >= 8, NA, fin.preds$c246)
+fin.preds$c246[fin.preds$c246==0] <- "GRADUAL"
+fin.preds$c246[fin.preds$c246==1] <- "SUDDEN"
+fin.preds$c246[fin.preds$c246==7] <- "NONE"
+fin.preds$c246 <- as.factor(fin.preds$c246)
+
+fin.preds$c247 <- ifelse(fin.preds$c247 >= 8, NA, fin.preds$c247)
+fin.preds$c247[fin.preds$c247==0] <- "NO"
+fin.preds$c247[fin.preds$c247==1] <- "SLIGHT"
+fin.preds$c247[fin.preds$c247==2] <- "GREAT"
+fin.preds$c247 <- as.factor(fin.preds$c247)
+
+fin.preds$c248 <- ifelse(fin.preds$c248 >= 8, NA, fin.preds$c248)
+fin.preds$c248[fin.preds$c248==0] <- "NO"
+fin.preds$c248[fin.preds$c248==1] <- "SLIGHT"
+fin.preds$c248[fin.preds$c248==2] <- "GREAT"
+fin.preds$c248 <- as.factor(fin.preds$c248)
+
+fin.preds$c249 <- ifelse(fin.preds$c249 >= 8, NA, fin.preds$c249)
+fin.preds$c249[fin.preds$c249==0] <- "NO"
+fin.preds$c249[fin.preds$c249==1] <- "SLIGHT"
+fin.preds$c249[fin.preds$c249==2] <- "GREAT"
+fin.preds$c249 <- as.factor(fin.preds$c249)
+
+fin.preds$c250 <- ifelse(fin.preds$c250 >= 8, NA, fin.preds$c250)
+fin.preds$c250[fin.preds$c250==0] <- "NO"
+fin.preds$c250[fin.preds$c250==1] <- "SLIGHT"
+fin.preds$c250[fin.preds$c250==2] <- "GREAT"
+fin.preds$c250 <- as.factor(fin.preds$c250)
+
+fin.preds$c254 <- ifelse(fin.preds$c254 >= 8, NA, fin.preds$c254)
+fin.preds$c254[fin.preds$c254==0] <- "NO"
+fin.preds$c254[fin.preds$c254==1] <- "YES"
+fin.preds$c254 <- as.factor(fin.preds$c254)
+
+fin.preds$c255 <- ifelse(fin.preds$c255 >= 8, NA, fin.preds$c255)
+fin.preds$c255[fin.preds$c255==0] <- "NO"
+fin.preds$c255[fin.preds$c255==1] <- "SOMETIMES"
+fin.preds$c255[fin.preds$c255==2] <- "OFTEN"
+fin.preds$c255 <- as.factor(fin.preds$c255)
+
+fin.preds$c256 <- ifelse(fin.preds$c256 >= 8, NA, fin.preds$c256)
+fin.preds$c256[fin.preds$c256==0] <- "NO"
+fin.preds$c256[fin.preds$c256==1] <- "YES"
+fin.preds$c256 <- as.factor(fin.preds$c256)
+
+fin.preds$c257 <- ifelse(fin.preds$c257 >= 8, NA, fin.preds$c257)
+fin.preds$c257[fin.preds$c257==0] <- "NO"
+fin.preds$c257[fin.preds$c257==1] <- "YES"
+fin.preds$c257 <- as.factor(fin.preds$c257)
+
+fin.preds$c258 <- ifelse(fin.preds$c258 >= 8, NA, fin.preds$c258)
+fin.preds$c258[fin.preds$c258==0] <- "NO"
+fin.preds$c258[fin.preds$c258==1] <- "YES"
+fin.preds$c258 <- as.factor(fin.preds$c258)
+
+fin.preds$c259 <- ifelse(fin.preds$c259 >= 8, NA, fin.preds$c259)
+fin.preds$c259[fin.preds$c259==0] <- "NO"
+fin.preds$c259[fin.preds$c259==1] <- "YES"
+fin.preds$c259 <- as.factor(fin.preds$c259)
+
+fin.preds$c261 <- ifelse(fin.preds$c261 >= 8, NA, fin.preds$c261)
+fin.preds$c261[fin.preds$c261==0] <- "GRADUAL"
+fin.preds$c261[fin.preds$c261==1] <- "SUDDEN"
+fin.preds$c261[fin.preds$c261==7] <- "NONE"
+fin.preds$c261 <- as.factor(fin.preds$c261)
+
+fin.preds$c262 <- ifelse(fin.preds$c262 >= 8, NA, fin.preds$c262)
+fin.preds$c262[fin.preds$c262==0] <- "GRADUAL"
+fin.preds$c262[fin.preds$c262==1] <- "SUDDEN"
+fin.preds$c262[fin.preds$c262==7] <- "NONE"
+fin.preds$c262 <- as.factor(fin.preds$c262)
+
+fin.preds$c263 <- ifelse(fin.preds$c263 >= 8, NA, fin.preds$c263)
+fin.preds$c263[fin.preds$c263==0] <- "NO"
+fin.preds$c263[fin.preds$c263==1] <- "SLIGHT"
+fin.preds$c263[fin.preds$c263==2] <- "GREAT"
+fin.preds$c263 <- as.factor(fin.preds$c263)
+
+fin.preds$c264 <- ifelse(fin.preds$c264 >= 8, NA, fin.preds$c264)
+fin.preds$c264[fin.preds$c264==0] <- "NO"
+fin.preds$c264[fin.preds$c264==1] <- "SLIGHT"
+fin.preds$c264[fin.preds$c264==2] <- "GREAT"
+fin.preds$c264 <- as.factor(fin.preds$c264)
+
+fin.preds$c265[fin.preds$c265>=8] <- NA
+fin.preds$c265[fin.preds$c265==0] <- "NO"
+fin.preds$c265[fin.preds$c265==2] <- "MESSY"
+fin.preds$c265[fin.preds$c265==4] <- "SIMPLE.SOLIDS"
+fin.preds$c265[fin.preds$c265==6] <- "HAS.TO.BE.FED"
+fin.preds$c265 <- as.factor(fin.preds$c265)
+
+fin.preds$c266[fin.preds$c266>=8] <- NA
+fin.preds$c266[fin.preds$c266==0] <- "NO"
+fin.preds$c266[fin.preds$c266==2] <- "OCCASIONAL"
+fin.preds$c266[fin.preds$c266==4] <- "WRONG"
+fin.preds$c266[fin.preds$c266==6] <- "UNABLE"
+fin.preds$c266 <- as.factor(fin.preds$c266)
+
+fin.preds$c267[fin.preds$c267>=8] <- NA
+fin.preds$c267[fin.preds$c267==0] <- "NO"
+fin.preds$c267[fin.preds$c267==2] <- "OCCASIONAL"
+fin.preds$c267[fin.preds$c267==4] <- "OFTEN"
+fin.preds$c267[fin.preds$c267==6] <- "DOUBLY"
+fin.preds$c267 <- as.factor(fin.preds$c267)
+
+fin.preds$c269 <- ifelse(fin.preds$c269 >= 8, NA, fin.preds$c269)
+fin.preds$c269[fin.preds$c269==0] <- "GRADUAL"
+fin.preds$c269[fin.preds$c269==1] <- "SUDDEN"
+fin.preds$c269[fin.preds$c269==7] <- "NONE"
+fin.preds$c269 <- as.factor(fin.preds$c269)
+
+fin.preds$c275 <- ifelse(fin.preds$c275 >= 8, NA, fin.preds$c275)
+fin.preds$c275[fin.preds$c275==0] <- "NO"
+fin.preds$c275[fin.preds$c275==1] <- "YES"
+fin.preds$c275 <- as.factor(fin.preds$c275)
+
+fin.preds$c276 <- ifelse(fin.preds$c276 >= 8, NA, fin.preds$c276)
+fin.preds$c276[fin.preds$c276==0] <- "NO"
+fin.preds$c276[fin.preds$c276==1] <- "YES"
+fin.preds$c276 <- as.factor(fin.preds$c276)
+
+fin.preds$c277 <- ifelse(fin.preds$c277 >= 8, NA, fin.preds$c277)
+fin.preds$c277[fin.preds$c277==0] <- "NO"
+fin.preds$c277[fin.preds$c277==1] <- "YES"
+fin.preds$c277 <- as.factor(fin.preds$c277)
+
+fin.preds$c280 <- ifelse(fin.preds$c280 >= 8, NA, fin.preds$c280)
+fin.preds$c280[fin.preds$c280==0] <- "NO"
+fin.preds$c280[fin.preds$c280==1] <- "YES"
+fin.preds$c280 <- as.factor(fin.preds$c280)
+
+fin.preds$c281 <- ifelse(fin.preds$c281 >= 8, NA, fin.preds$c281)
+fin.preds$c281[fin.preds$c281==0] <- "NO"
+fin.preds$c281[fin.preds$c281==1] <- "YES"
+fin.preds$c281 <- as.factor(fin.preds$c281)
+
+fin.preds$c282 <- ifelse(fin.preds$c282 >= 8, NA, fin.preds$c282)
+fin.preds$c282[fin.preds$c282==0] <- "NO"
+fin.preds$c282[fin.preds$c282==1] <- "YES"
+fin.preds$c282 <- as.factor(fin.preds$c282)
+
+fin.preds$c283 <- ifelse(fin.preds$c283 >= 8, NA, fin.preds$c283)
+fin.preds$c283[fin.preds$c283==0] <- "NO"
+fin.preds$c283[fin.preds$c283==1] <- "YES"
+fin.preds$c283 <- as.factor(fin.preds$c283)
+
+fin.preds$c286 <- ifelse(fin.preds$c286 >= 8, NA, fin.preds$c286)
+fin.preds$c286[fin.preds$c286==0] <- "NO"
+fin.preds$c286[fin.preds$c286==1] <- "YES"
+fin.preds$c286 <- as.factor(fin.preds$c286)
+
+fin.preds$c287 <- ifelse(fin.preds$c287 >= 8, NA, fin.preds$c287)
+fin.preds$c287[fin.preds$c287==0] <- "NO"
+fin.preds$c287[fin.preds$c287==1] <- "YES"
+fin.preds$c287 <- as.factor(fin.preds$c287)
+
+fin.preds$c288 <- ifelse(fin.preds$c288 >= 8, NA, fin.preds$c288)
+fin.preds$c288[fin.preds$c288==0] <- "NO"
+fin.preds$c288[fin.preds$c288==1] <- "YES"
+fin.preds$c288 <- as.factor(fin.preds$c288)
+
+fin.preds$c289 <- ifelse(fin.preds$c289 >= 8, NA, fin.preds$c289)
+fin.preds$c289[fin.preds$c289==0] <- "NO"
+fin.preds$c289[fin.preds$c289==1] <- "YES"
+fin.preds$c289 <- as.factor(fin.preds$c289)
+
+fin.preds$c290 <- ifelse(fin.preds$c290 >= 8, NA, fin.preds$c290)
+fin.preds$c290[fin.preds$c290==0] <- "NO"
+fin.preds$c290[fin.preds$c290==1] <- "YES"
+fin.preds$c290 <- as.factor(fin.preds$c290)
+
+fin.preds$c292 <- ifelse(fin.preds$c292 >= 7, NA, fin.preds$c292)
+fin.preds$c292[fin.preds$c292==0] <- "NO"
+fin.preds$c292[fin.preds$c292==1] <- "SOME"
+fin.preds$c292[fin.preds$c292==2] <- "GREAT"
+fin.preds$c292 <- as.factor(fin.preds$c292)
+
+fin.preds$c301 <- ifelse(fin.preds$c301 >= 8, NA, fin.preds$c301)
+fin.preds$c301[fin.preds$c301==0] <- "NO"
+fin.preds$c301[fin.preds$c301==1] <- "ONE"
+fin.preds$c301[fin.preds$c301==2] <- "TWO"
+fin.preds$c301[fin.preds$c301==3] <- "THREE"
+fin.preds$c301 <- as.factor(fin.preds$c301)
+
+fin.preds$c302 <- ifelse(fin.preds$c302 >= 8, NA, fin.preds$c302)
+fin.preds$c302[fin.preds$c302==0] <- "NO"
+fin.preds$c302[fin.preds$c302==1] <- "INFANTILE"
+fin.preds$c302[fin.preds$c302==2] <- "PAST"
+fin.preds$c302[fin.preds$c302==3] <- "CURRENT"
+fin.preds$c302 <- as.factor(fin.preds$c302)
+
+fin.preds$c303 <- ifelse(fin.preds$c303 >= 8, NA, fin.preds$c303)
+fin.preds$c303[fin.preds$c303==0] <- "NO"
+fin.preds$c303[fin.preds$c303==1] <- "YES"
+fin.preds$c303 <- as.factor(fin.preds$c303)
+
+fin.preds$c304 <- ifelse(fin.preds$c304 >= 8, NA, fin.preds$c304)
+fin.preds$c304[fin.preds$c304==0] <- "NO"
+fin.preds$c304[fin.preds$c304==1] <- "YES"
+fin.preds$c304 <- as.factor(fin.preds$c304)
+
+fin.preds$c305 <- ifelse(fin.preds$c305 >= 8, NA, fin.preds$c305)
+fin.preds$c305[fin.preds$c305==0] <- "NO"
+fin.preds$c305[fin.preds$c305==1] <- "YES"
+fin.preds$c305 <- as.factor(fin.preds$c305)
+
+fin.preds$c306 <- ifelse(fin.preds$c306 >= 8, NA, fin.preds$c306)
+fin.preds$c306[fin.preds$c306==0] <- "NO"
+fin.preds$c306[fin.preds$c306==1] <- "YES"
+fin.preds$c306 <- as.factor(fin.preds$c306)
+
+fin.preds$c307 <- ifelse(fin.preds$c307 >= 8, NA, fin.preds$c307)
+fin.preds$c307[fin.preds$c307==0] <- "NO"
+fin.preds$c307[fin.preds$c307==1] <- "TRANQ"
+fin.preds$c307[fin.preds$c307==2] <- "HYP"
+fin.preds$c307[fin.preds$c307==3] <- "BARB"
+fin.preds$c307[fin.preds$c307==4] <- "STIM"
+fin.preds$c307[fin.preds$c307==5] <- "OTHER"
+fin.preds$c307 <- as.factor(fin.preds$c307)
+
+fin.preds$c308 <- ifelse(fin.preds$c308 >= 8, NA, fin.preds$c308)
+fin.preds$c308[fin.preds$c308==0] <- "NO"
+fin.preds$c308[fin.preds$c308==1] <- "YES"
+fin.preds$c308 <- as.factor(fin.preds$c308)
+
+fin.preds$c309 <- ifelse(fin.preds$c309 >= 8, NA, fin.preds$c309)
+fin.preds$c309[fin.preds$c309==0] <- "NO"
+fin.preds$c309[fin.preds$c309 > 0 & fin.preds$c309 <= 6] <- "YES"
+fin.preds$c309 <- as.factor(fin.preds$c309)
+
+fin.preds$c318 <- ifelse(fin.preds$c318>=88,NA,fin.preds$c318)
+fin.preds$c318 <- as.numeric(fin.preds$c318)
+
+fin.preds$c319 <- ifelse(fin.preds$c319>=88,NA,fin.preds$c319)
+fin.preds$c319 <- as.numeric(fin.preds$c319)
+
+fin.preds$c320 <- ifelse(fin.preds$c320>=88,NA,fin.preds$c320)
+fin.preds$c320 <- as.numeric(fin.preds$c320)
+
+fin.preds$c321 <- ifelse(fin.preds$c321>=88,NA,fin.preds$c321)
+fin.preds$c321 <- as.numeric(fin.preds$c321)
+
+fin.preds$painkill <- as.character(fin.preds$painkill)
+fin.preds$painkill[fin.preds$painkill=="8" | fin.preds$painkill=="9"] <- NA
+fin.preds$painkill[fin.preds$painkill=="1"] <- "YES"
+fin.preds$painkill[fin.preds$painkill=="2"] <- "NO"
+fin.preds$painkill <- as.factor(fin.preds$painkill)
+
+
+droppers <- c("c245","c260","c268","c293","c294")
+
+fin.preds <- fin.preds[,-c(which(colnames(fin.preds) %in% droppers))]
+summary(fin.preds)
+
+
+class.order <- unlist(lapply(fin.preds,class))
+class.order
+#unique(class.order)
+
+
+```
 
 # Introduction 
 
+
+
 # Code & Analyses
 
-An example of `mean.impute` and `fast.csci` in use. We will first use `mean.impute` to impute missing data to the mean for `health1`. We will then use `fast.csci` to correct `zarscore` and `health1` by the age and sex of the participant. NOTE: `fast.csci` has to be used with some caution. Be very careful if using this to correct values when there are mixed data (e.g., predictors are mixes of factors and numeric) and only use it on outcomes that are numeric. Further, `fast.csci` requires more than 1 predictor. If you have only a single predictor you can use something like: `resid(lm(outcome~predictor,na.action = na.exclude))`
-
-```{r impute_csci_example}
-
-  health1_impute <- mean.impute(as.matrix(fin.outs[,"health1"]))
-  summary(cbind(fin.outs[,"health1"],health1_impute))
-
-  fin.preds$clinage <- as.numeric(fin.preds$clinage)
-  fin.preds$studysex <- as.factor(fin.preds$studysex)
-  health.corrected <- fast.csci(fin.outs[,c("health1","zarscore")],fin.preds[,c("clinage","studysex")],rownames(fin.preds),T,F,T,T)
- head(health.corrected)
- 
-```
 
 # Conclusions
