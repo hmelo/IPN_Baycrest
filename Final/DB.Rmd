@@ -540,11 +540,28 @@ fin.preds$painkill <- as.factor(fin.preds$painkill)
 droppers <- c("c245","c260","c268","c293","c294")
 
 fin.preds <- fin.preds[,-c(which(colnames(fin.preds) %in% droppers))]
-summary(fin.preds)
+#summary(fin.preds)
 
 
 class.order <- unlist(lapply(fin.preds,class))
-class.order
+numeric.columns <- which(class.order == "numeric")
+factor.columns <- which(class.order != "numeric")
+
+fin.preds_num <- fin.preds[,numeric.columns]
+fin.preds_cat <- fin.preds[,factor.columns]
+
+fin.preds_num.be <- cbind((1-expo.scale(fin.preds_num))/2,(1+expo.scale(fin.preds_num))/2)
+colnames(fin.preds_num.be) <- c(paste0(colnames(fin.preds_num),"-"),paste0(colnames(fin.preds_num),"+"))
+fin.preds_num.be <- mean.impute(fin.preds_num.be)
+fin.dat <- cbind(fin.preds_num.be,makeNominalData(fin.preds_cat))
+#dim(fin.dat)
+
+ca.res <- epCA(fin.dat,graphs=F)
+  ## need to find outliers here...
+plot(cbind(rowSums(ca.res$ExPosition.Data$fi^2),rowSums(ca.res$ExPosition.Data$pdq$p^2)))
+
+
+#class.order
 #unique(class.order)
 
 
