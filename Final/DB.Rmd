@@ -8,8 +8,9 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-require(ExPosition)
+require(TInPosition)
 require(knitr)
+require(SDMTools)
 knitr::opts_chunk$set(echo = TRUE)
 
 fast.csci <- function(DATA, REGRESSORS=NULL, rows, center=T, scale=F, main.effects.only=F, impute=T){
@@ -50,6 +51,36 @@ mean.impute <- function(DATA){
   return(DATA)
 }
 
+
+pointsInHull <- function(pnts, points.for.hull, x_axis=1, y_axis=2, percentage=.95){
+	
+	nsim <- nrow(points.for.hull)
+    repeat {
+        hpts <- chull(points.for.hull[, c(x_axis, y_axis)])
+        npts <- nrow(points.for.hull[-hpts, c(x_axis, y_axis)])
+        if ((npts/nsim < percentage) || is.null(npts)) {
+            break
+        }
+        points.for.hull <- points.for.hull[-hpts, ]
+    }
+    hpts <- c(hpts, hpts[1])
+
+	pnts <- pnts[,c(x_axis, y_axis)]
+    poly.pnts <- points.for.hull[hpts,c(x_axis, y_axis)]
+	
+	if (!(is.matrix(pnts) & is.matrix(poly.pnts))) 
+        stop("pnts & poly.pnts must be a 2 column dataframe or matrix")
+    if (!(dim(pnts)[2] == 2 & dim(poly.pnts)[2] == 2)) 
+        stop("pnts & poly.pnts must be a 2 column dataframe or matrix")
+    if (poly.pnts[1, 1] == poly.pnts[nrow(poly.pnts), 1] & poly.pnts[1, 2] == poly.pnts[nrow(poly.pnts), 2]) 
+        poly.pnts = poly.pnts[-1, ]
+    
+    out <- .Call("pip", pnts[, 1], pnts[, 2], nrow(pnts), poly.pnts[,1], poly.pnts[, 2], nrow(poly.pnts), PACKAGE = "SDMTools")
+    names(out) <- rownames(pnts)
+	return(out)	
+}
+
+
 load('./fin.des.rda')
 load('./fin.des.nom.rda')
 load('./fin.outs.rda')
@@ -60,7 +91,7 @@ load('./fin.preds.rda')
 
 This part contains a few notes and blocks of code that will likely go unseen in the PDF but available in the RMarkdown document.
 
-```{r preliminary_clean_up, echo=F}
+```{r preliminary_clean_up_predictors, echo=F}
 
 fin.preds$studysex <- ifelse(fin.preds$studysex==1,"MALE","FEMALE")
 fin.preds$studysex <- as.factor(fin.preds$studysex)
@@ -554,15 +585,422 @@ fin.preds_num.be <- cbind((1-expo.scale(fin.preds_num))/2,(1+expo.scale(fin.pred
 colnames(fin.preds_num.be) <- c(paste0(colnames(fin.preds_num),"-"),paste0(colnames(fin.preds_num),"+"))
 fin.preds_num.be <- mean.impute(fin.preds_num.be)
 fin.dat <- cbind(fin.preds_num.be,makeNominalData(fin.preds_cat))
-#dim(fin.dat)
+
+```
+
+```{r find_outliers_predictors, echo=F}
 
 ca.res <- epCA(fin.dat,graphs=F)
+chi.mahal <- cbind(rowSums(ca.res$ExPosition.Data$fi^2),rowSums(ca.res$ExPosition.Data$pdq$p^2))
+
   ## need to find outliers here...
-plot(cbind(rowSums(ca.res$ExPosition.Data$fi^2),rowSums(ca.res$ExPosition.Data$pdq$p^2)))
+#plot(cbind(rowSums(ca.res$ExPosition.Data$fi^2),rowSums(ca.res$ExPosition.Data$pdq$p^2)))
 
 
 #class.order
 #unique(class.order)
+# pih <- pointsInHull(chi.mahal,chi.mahal,percentage=.75)
+# pih.cols <- ifelse(pih==1,"blue","red")
+# plot(cbind(rowSums(ca.res$ExPosition.Data$fi^2),rowSums(ca.res$ExPosition.Data$pdq$p^2)),col=pih.cols,pch=20)
+# 
+# these.cols <- rep("blue",nrow(chi.mahal))
+# these.cols[which(chi.mahal[,1] > 3 | chi.mahal[,2] > 250)] <- "red"
+# plot(cbind(rowSums(ca.res$ExPosition.Data$fi^2),rowSums(ca.res$ExPosition.Data$pdq$p^2)),col=these.cols,pch=20)
+
+these.outliers <- which(chi.mahal[,1] > 3 | chi.mahal[,2] > 250)
+these.inliers <- which(!(chi.mahal[,1] > 3 | chi.mahal[,2] > 250))
+
+
+fin.preds_num.inliers <- fin.preds_num[these.inliers,]
+fin.preds_cat.inliers <- fin.preds_cat[these.inliers,]
+
+fin.preds_num.inliners.be <- cbind((1-expo.scale(fin.preds_num.inliers))/2,(1+expo.scale(fin.preds_num.inliers))/2)
+
+colnames(fin.preds_num.inliners.be) <- c(paste0(colnames(fin.preds_num.inliers),"-"),paste0(colnames(fin.preds_num.inliers),"+"))
+
+fin.preds_num.inliners.be <- mean.impute(fin.preds_num.inliners.be)
+
+fin.dat.inliers <- cbind(fin.preds_num.inliners.be,makeNominalData(fin.preds_cat.inliers))
+
+ca.res.inliers <- epCA(fin.dat.inliers,graphs=F)
+chi.mahal.inliers <- cbind(rowSums(ca.res.inliers$ExPosition.Data$fi^2),rowSums(ca.res.inliers$ExPosition.Data$pdq$p^2))
+
+#plot(cbind(rowSums(ca.res.inliers$ExPosition.Data$fi^2),rowSums(ca.res.inliers$ExPosition.Data$pdq$p^2)))
+dim(fin.dat.inliers)
+
+```
+
+```{r preliminary_clean_up_outcomes, echo=F}
+fin.outs$askhelp <- ifelse(fin.outs$askhelp >= 8, NA, fin.outs$askhelp)
+fin.outs$askhelp[fin.outs$askhelp==0] <- "NEVER"
+fin.outs$askhelp[fin.outs$askhelp==1] <- "RARELY"
+fin.outs$askhelp[fin.outs$askhelp==2] <- "SOMETIMES"
+fin.outs$askhelp[fin.outs$askhelp==3] <- "FREQUENT"
+fin.outs$askhelp[fin.outs$askhelp==4] <- "ALWAYS"
+fin.outs$askhelp <- as.factor(fin.outs$askhelp)
+
+fin.outs$notime <- ifelse(fin.outs$notime >= 8, NA, fin.outs$notime)
+fin.outs$notime[fin.outs$notime==0] <- "NEVER"
+fin.outs$notime[fin.outs$notime==1] <- "RARELY"
+fin.outs$notime[fin.outs$notime==2] <- "SOMETIMES"
+fin.outs$notime[fin.outs$notime==3] <- "FREQUENT"
+fin.outs$notime[fin.outs$notime==4] <- "ALWAYS"
+fin.outs$notime <- as.factor(fin.outs$notime)
+
+fin.outs$feelstre <- ifelse(fin.outs$feelstre >= 8, NA, fin.outs$feelstre)
+fin.outs$feelstre[fin.outs$feelstre==0] <- "NEVER"
+fin.outs$feelstre[fin.outs$feelstre==1] <- "RARELY"
+fin.outs$feelstre[fin.outs$feelstre==2] <- "SOMETIMES"
+fin.outs$feelstre[fin.outs$feelstre==3] <- "FREQUENT"
+fin.outs$feelstre[fin.outs$feelstre==4] <- "ALWAYS"
+fin.outs$feelstre <- as.factor(fin.outs$feelstre)
+
+fin.outs$feelemba <- ifelse(fin.outs$feelemba >= 8, NA, fin.outs$feelemba)
+fin.outs$feelemba[fin.outs$feelemba==0] <- "NEVER"
+fin.outs$feelemba[fin.outs$feelemba==1] <- "RARELY"
+fin.outs$feelemba[fin.outs$feelemba==2] <- "SOMETIMES"
+fin.outs$feelemba[fin.outs$feelemba==3] <- "FREQUENT"
+fin.outs$feelemba[fin.outs$feelemba==4] <- "ALWAYS"
+fin.outs$feelemba <- as.factor(fin.outs$feelemba)
+
+fin.outs$feelangr <- ifelse(fin.outs$feelangr >= 8, NA, fin.outs$feelangr)
+fin.outs$feelangr[fin.outs$feelangr==0] <- "NEVER"
+fin.outs$feelangr[fin.outs$feelangr==1] <- "RARELY"
+fin.outs$feelangr[fin.outs$feelangr==2] <- "SOMETIMES"
+fin.outs$feelangr[fin.outs$feelangr==3] <- "FREQUENT"
+fin.outs$feelangr[fin.outs$feelangr==4] <- "ALWAYS"
+fin.outs$feelangr <- as.factor(fin.outs$feelangr)
+
+fin.outs$affects <- ifelse(fin.outs$affects >= 8, NA, fin.outs$affects)
+fin.outs$affects[fin.outs$affects==0] <- "NEVER"
+fin.outs$affects[fin.outs$affects==1] <- "RARELY"
+fin.outs$affects[fin.outs$affects==2] <- "SOMETIMES"
+fin.outs$affects[fin.outs$affects==3] <- "FREQUENT"
+fin.outs$affects[fin.outs$affects==4] <- "ALWAYS"
+fin.outs$affects <- as.factor(fin.outs$affects)
+
+fin.outs$afraid <- ifelse(fin.outs$afraid >= 8, NA, fin.outs$afraid)
+fin.outs$afraid[fin.outs$afraid==0] <- "NEVER"
+fin.outs$afraid[fin.outs$afraid==1] <- "RARELY"
+fin.outs$afraid[fin.outs$afraid==2] <- "SOMETIMES"
+fin.outs$afraid[fin.outs$afraid==3] <- "FREQUENT"
+fin.outs$afraid[fin.outs$afraid==4] <- "ALWAYS"
+fin.outs$afraid <- as.factor(fin.outs$afraid)
+
+fin.outs$dependen <- ifelse(fin.outs$dependen >= 8, NA, fin.outs$dependen)
+fin.outs$dependen[fin.outs$dependen==0] <- "NEVER"
+fin.outs$dependen[fin.outs$dependen==1] <- "RARELY"
+fin.outs$dependen[fin.outs$dependen==2] <- "SOMETIMES"
+fin.outs$dependen[fin.outs$dependen==3] <- "FREQUENT"
+fin.outs$dependen[fin.outs$dependen==4] <- "ALWAYS"
+fin.outs$dependen <- as.factor(fin.outs$dependen)
+
+fin.outs$strained <- ifelse(fin.outs$strained >= 8, NA, fin.outs$strained)
+fin.outs$strained[fin.outs$strained==0] <- "NEVER"
+fin.outs$strained[fin.outs$strained==1] <- "RARELY"
+fin.outs$strained[fin.outs$strained==2] <- "SOMETIMES"
+fin.outs$strained[fin.outs$strained==3] <- "FREQUENT"
+fin.outs$strained[fin.outs$strained==4] <- "ALWAYS"
+fin.outs$strained <- as.factor(fin.outs$strained)
+
+fin.outs$suffered <- ifelse(fin.outs$suffered >= 8, NA, fin.outs$suffered)
+fin.outs$suffered[fin.outs$suffered==0] <- "NEVER"
+fin.outs$suffered[fin.outs$suffered==1] <- "RARELY"
+fin.outs$suffered[fin.outs$suffered==2] <- "SOMETIMES"
+fin.outs$suffered[fin.outs$suffered==3] <- "FREQUENT"
+fin.outs$suffered[fin.outs$suffered==4] <- "ALWAYS"
+fin.outs$suffered <- as.factor(fin.outs$suffered)
+
+fin.outs$privacy <- ifelse(fin.outs$privacy >= 8, NA, fin.outs$privacy)
+fin.outs$privacy[fin.outs$privacy==0] <- "NEVER"
+fin.outs$privacy[fin.outs$privacy==1] <- "RARELY"
+fin.outs$privacy[fin.outs$privacy==2] <- "SOMETIMES"
+fin.outs$privacy[fin.outs$privacy==3] <- "FREQUENT"
+fin.outs$privacy[fin.outs$privacy==4] <- "ALWAYS"
+fin.outs$privacy <- as.factor(fin.outs$privacy)
+
+fin.outs$soclife <- ifelse(fin.outs$soclife >= 8, NA, fin.outs$soclife)
+fin.outs$soclife[fin.outs$soclife==0] <- "NEVER"
+fin.outs$soclife[fin.outs$soclife==1] <- "RARELY"
+fin.outs$soclife[fin.outs$soclife==2] <- "SOMETIMES"
+fin.outs$soclife[fin.outs$soclife==3] <- "FREQUENT"
+fin.outs$soclife[fin.outs$soclife==4] <- "ALWAYS"
+fin.outs$soclife <- as.factor(fin.outs$soclife)
+
+fin.outs$friends <- ifelse(fin.outs$friends >= 8, NA, fin.outs$friends)
+fin.outs$friends[fin.outs$friends==0] <- "NEVER"
+fin.outs$friends[fin.outs$friends==1] <- "RARELY"
+fin.outs$friends[fin.outs$friends==2] <- "SOMETIMES"
+fin.outs$friends[fin.outs$friends==3] <- "FREQUENT"
+fin.outs$friends[fin.outs$friends==4] <- "ALWAYS"
+fin.outs$friends <- as.factor(fin.outs$friends)
+
+fin.outs$expect <- ifelse(fin.outs$expect >= 8, NA, fin.outs$expect)
+fin.outs$expect[fin.outs$expect==0] <- "NEVER"
+fin.outs$expect[fin.outs$expect==1] <- "RARELY"
+fin.outs$expect[fin.outs$expect==2] <- "SOMETIMES"
+fin.outs$expect[fin.outs$expect==3] <- "FREQUENT"
+fin.outs$expect[fin.outs$expect==4] <- "ALWAYS"
+fin.outs$expect <- as.factor(fin.outs$expect)
+
+fin.outs$expenses <- ifelse(fin.outs$expenses >= 8, NA, fin.outs$expenses)
+fin.outs$expenses[fin.outs$expenses==0] <- "NEVER"
+fin.outs$expenses[fin.outs$expenses==1] <- "RARELY"
+fin.outs$expenses[fin.outs$expenses==2] <- "SOMETIMES"
+fin.outs$expenses[fin.outs$expenses==3] <- "FREQUENT"
+fin.outs$expenses[fin.outs$expenses==4] <- "ALWAYS"
+fin.outs$expenses <- as.factor(fin.outs$expenses)
+
+fin.outs$unable <- ifelse(fin.outs$unable >= 8, NA, fin.outs$unable)
+fin.outs$unable[fin.outs$unable==0] <- "NEVER"
+fin.outs$unable[fin.outs$unable==1] <- "RARELY"
+fin.outs$unable[fin.outs$unable==2] <- "SOMETIMES"
+fin.outs$unable[fin.outs$unable==3] <- "FREQUENT"
+fin.outs$unable[fin.outs$unable==4] <- "ALWAYS"
+fin.outs$unable <- as.factor(fin.outs$unable)
+
+fin.outs$lostctrl <- ifelse(fin.outs$lostctrl >= 8, NA, fin.outs$lostctrl)
+fin.outs$lostctrl[fin.outs$lostctrl==0] <- "NEVER"
+fin.outs$lostctrl[fin.outs$lostctrl==1] <- "RARELY"
+fin.outs$lostctrl[fin.outs$lostctrl==2] <- "SOMETIMES"
+fin.outs$lostctrl[fin.outs$lostctrl==3] <- "FREQUENT"
+fin.outs$lostctrl[fin.outs$lostctrl==4] <- "ALWAYS"
+fin.outs$lostctrl <- as.factor(fin.outs$lostctrl)
+
+fin.outs$leave <- ifelse(fin.outs$leave >= 8, NA, fin.outs$leave)
+fin.outs$leave[fin.outs$leave==0] <- "NEVER"
+fin.outs$leave[fin.outs$leave==1] <- "RARELY"
+fin.outs$leave[fin.outs$leave==2] <- "SOMETIMES"
+fin.outs$leave[fin.outs$leave==3] <- "FREQUENT"
+fin.outs$leave[fin.outs$leave==4] <- "ALWAYS"
+fin.outs$leave <- as.factor(fin.outs$leave)
+
+fin.outs$uncertai <- ifelse(fin.outs$uncertai >= 8, NA, fin.outs$uncertai)
+fin.outs$uncertai[fin.outs$uncertai==0] <- "NEVER"
+fin.outs$uncertai[fin.outs$uncertai==1] <- "RARELY"
+fin.outs$uncertai[fin.outs$uncertai==2] <- "SOMETIMES"
+fin.outs$uncertai[fin.outs$uncertai==3] <- "FREQUENT"
+fin.outs$uncertai[fin.outs$uncertai==4] <- "ALWAYS"
+fin.outs$uncertai <- as.factor(fin.outs$uncertai)
+
+fin.outs$doing <- ifelse(fin.outs$doing >= 8, NA, fin.outs$doing)
+fin.outs$doing[fin.outs$doing==0] <- "NEVER"
+fin.outs$doing[fin.outs$doing==1] <- "RARELY"
+fin.outs$doing[fin.outs$doing==2] <- "SOMETIMES"
+fin.outs$doing[fin.outs$doing==3] <- "FREQUENT"
+fin.outs$doing[fin.outs$doing==4] <- "ALWAYS"
+fin.outs$doing <- as.factor(fin.outs$doing)
+
+fin.outs$better <- ifelse(fin.outs$better >= 8, NA, fin.outs$better)
+fin.outs$better[fin.outs$better==0] <- "NEVER"
+fin.outs$better[fin.outs$better==1] <- "RARELY"
+fin.outs$better[fin.outs$better==2] <- "SOMETIMES"
+fin.outs$better[fin.outs$better==3] <- "FREQUENT"
+fin.outs$better[fin.outs$better==4] <- "ALWAYS"
+fin.outs$better <- as.factor(fin.outs$better)
+
+fin.outs$burdened <- ifelse(fin.outs$burdened >= 8, NA, fin.outs$burdened)
+fin.outs$burdened[fin.outs$burdened==0] <- "NEVER"
+fin.outs$burdened[fin.outs$burdened==1] <- "RARELY"
+fin.outs$burdened[fin.outs$burdened==2] <- "SOMETIMES"
+fin.outs$burdened[fin.outs$burdened==3] <- "FREQUENT"
+fin.outs$burdened[fin.outs$burdened==4] <- "ALWAYS"
+fin.outs$burdened <- as.factor(fin.outs$burdened)
+
+fin.outs$zarscore <- ifelse(fin.outs$zarscore >= 99, NA, fin.outs$zarscore)
+fin.outs$zarscore <- as.numeric(fin.outs$zarscore)
+
+fin.outs$health1 <- ifelse(fin.outs$health1 >= 7, NA, fin.outs$health1)
+fin.outs$health1[fin.outs$health1==1] <- "VERY.GOOD"
+fin.outs$health1[fin.outs$health1==2] <- "PRETTY.GOOD"
+fin.outs$health1[fin.outs$health1==3] <- "NOT.TOO.GOOD"
+fin.outs$health1[fin.outs$health1==4] <- "POOR"
+fin.outs$health1[fin.outs$health1==5] <- "VERY.POOR"
+fin.outs$health1 <- as.factor(fin.outs$health1)
+
+fin.outs$health2 <- ifelse(fin.outs$health2 >= 7, NA, fin.outs$health2)
+fin.outs$health2[fin.outs$health2==1] <- "BETTER"
+fin.outs$health2[fin.outs$health2==2] <- "ABOUT.SAME"
+fin.outs$health2[fin.outs$health2==3] <- "WORSE"
+fin.outs$health2 <- as.factor(fin.outs$health2)
+
+fin.outs$bother <- ifelse(fin.outs$bother >= 8, NA, fin.outs$bother)
+fin.outs$bother[fin.outs$bother==0] <- "<1"
+fin.outs$bother[fin.outs$bother==1] <- "1_2"
+fin.outs$bother[fin.outs$bother==2] <- "3_4"
+fin.outs$bother[fin.outs$bother==3] <- "5_7"
+fin.outs$bother <- as.factor(fin.outs$bother)
+
+fin.outs$poorapp <- ifelse(fin.outs$poorapp >= 8, NA, fin.outs$poorapp)
+fin.outs$poorapp[fin.outs$poorapp==0] <- "<1"
+fin.outs$poorapp[fin.outs$poorapp==1] <- "1_2"
+fin.outs$poorapp[fin.outs$poorapp==2] <- "3_4"
+fin.outs$poorapp[fin.outs$poorapp==3] <- "5_7"
+fin.outs$poorapp <- as.factor(fin.outs$poorapp)
+
+fin.outs$shake <- ifelse(fin.outs$shake >= 8, NA, fin.outs$shake)
+fin.outs$shake[fin.outs$shake==0] <- "<1"
+fin.outs$shake[fin.outs$shake==1] <- "1_2"
+fin.outs$shake[fin.outs$shake==2] <- "3_4"
+fin.outs$shake[fin.outs$shake==3] <- "5_7"
+fin.outs$shake <- as.factor(fin.outs$shake)
+
+fin.outs$good <- ifelse(fin.outs$good >= 8, NA, fin.outs$good)
+fin.outs$good[fin.outs$good==0] <- "<1"
+fin.outs$good[fin.outs$good==1] <- "1_2"
+fin.outs$good[fin.outs$good==2] <- "3_4"
+fin.outs$good[fin.outs$good==3] <- "5_7"
+fin.outs$good <- as.factor(fin.outs$good)
+
+fin.outs$mind <- ifelse(fin.outs$mind >= 8, NA, fin.outs$mind)
+fin.outs$mind[fin.outs$mind==0] <- "<1"
+fin.outs$mind[fin.outs$mind==1] <- "1_2"
+fin.outs$mind[fin.outs$mind==2] <- "3_4"
+fin.outs$mind[fin.outs$mind==3] <- "5_7"
+fin.outs$mind <- as.factor(fin.outs$mind)
+
+fin.outs$depressd <- ifelse(fin.outs$depressd >= 8, NA, fin.outs$depressd)
+fin.outs$depressd[fin.outs$depressd==0] <- "<1"
+fin.outs$depressd[fin.outs$depressd==1] <- "1_2"
+fin.outs$depressd[fin.outs$depressd==2] <- "3_4"
+fin.outs$depressd[fin.outs$depressd==3] <- "5_7"
+fin.outs$depressd <- as.factor(fin.outs$depressd)
+
+fin.outs$eveffort <- ifelse(fin.outs$eveffort >= 8, NA, fin.outs$eveffort)
+fin.outs$eveffort[fin.outs$eveffort==0] <- "<1"
+fin.outs$eveffort[fin.outs$eveffort==1] <- "1_2"
+fin.outs$eveffort[fin.outs$eveffort==2] <- "3_4"
+fin.outs$eveffort[fin.outs$eveffort==3] <- "5_7"
+fin.outs$eveffort <- as.factor(fin.outs$eveffort)
+
+fin.outs$hopeful <- ifelse(fin.outs$hopeful >= 8, NA, fin.outs$hopeful)
+fin.outs$hopeful[fin.outs$hopeful==0] <- "<1"
+fin.outs$hopeful[fin.outs$hopeful==1] <- "1_2"
+fin.outs$hopeful[fin.outs$hopeful==2] <- "3_4"
+fin.outs$hopeful[fin.outs$hopeful==3] <- "5_7"
+fin.outs$hopeful <- as.factor(fin.outs$hopeful)
+
+fin.outs$failure <- ifelse(fin.outs$failure >= 8, NA, fin.outs$failure)
+fin.outs$failure[fin.outs$failure==0] <- "<1"
+fin.outs$failure[fin.outs$failure==1] <- "1_2"
+fin.outs$failure[fin.outs$failure==2] <- "3_4"
+fin.outs$failure[fin.outs$failure==3] <- "5_7"
+fin.outs$failure <- as.factor(fin.outs$failure)
+
+fin.outs$fearful <- ifelse(fin.outs$fearful >= 8, NA, fin.outs$fearful)
+fin.outs$fearful[fin.outs$fearful==0] <- "<1"
+fin.outs$fearful[fin.outs$fearful==1] <- "1_2"
+fin.outs$fearful[fin.outs$fearful==2] <- "3_4"
+fin.outs$fearful[fin.outs$fearful==3] <- "5_7"
+fin.outs$fearful <- as.factor(fin.outs$fearful)
+
+fin.outs$restls <- ifelse(fin.outs$restls >= 8, NA, fin.outs$restls)
+fin.outs$restls[fin.outs$restls==0] <- "<1"
+fin.outs$restls[fin.outs$restls==1] <- "1_2"
+fin.outs$restls[fin.outs$restls==2] <- "3_4"
+fin.outs$restls[fin.outs$restls==3] <- "5_7"
+fin.outs$restls <- as.factor(fin.outs$restls)
+
+fin.outs$happy <- ifelse(fin.outs$happy >= 8, NA, fin.outs$happy)
+fin.outs$happy[fin.outs$happy==0] <- "<1"
+fin.outs$happy[fin.outs$happy==1] <- "1_2"
+fin.outs$happy[fin.outs$happy==2] <- "3_4"
+fin.outs$happy[fin.outs$happy==3] <- "5_7"
+fin.outs$happy <- as.factor(fin.outs$happy)
+
+fin.outs$talkless <- ifelse(fin.outs$talkless >= 8, NA, fin.outs$talkless)
+fin.outs$talkless[fin.outs$talkless==0] <- "<1"
+fin.outs$talkless[fin.outs$talkless==1] <- "1_2"
+fin.outs$talkless[fin.outs$talkless==2] <- "3_4"
+fin.outs$talkless[fin.outs$talkless==3] <- "5_7"
+fin.outs$talkless <- as.factor(fin.outs$talkless)
+
+fin.outs$lonely <- ifelse(fin.outs$lonely >= 8, NA, fin.outs$lonely)
+fin.outs$lonely[fin.outs$lonely==0] <- "<1"
+fin.outs$lonely[fin.outs$lonely==1] <- "1_2"
+fin.outs$lonely[fin.outs$lonely==2] <- "3_4"
+fin.outs$lonely[fin.outs$lonely==3] <- "5_7"
+fin.outs$lonely <- as.factor(fin.outs$lonely)
+
+fin.outs$unfriend <- ifelse(fin.outs$unfriend >= 8, NA, fin.outs$unfriend)
+fin.outs$unfriend[fin.outs$unfriend==0] <- "<1"
+fin.outs$unfriend[fin.outs$unfriend==1] <- "1_2"
+fin.outs$unfriend[fin.outs$unfriend==2] <- "3_4"
+fin.outs$unfriend[fin.outs$unfriend==3] <- "5_7"
+fin.outs$unfriend <- as.factor(fin.outs$unfriend)
+
+fin.outs$enjoylif <- ifelse(fin.outs$enjoylif >= 8, NA, fin.outs$enjoylif)
+fin.outs$enjoylif[fin.outs$enjoylif==0] <- "<1"
+fin.outs$enjoylif[fin.outs$enjoylif==1] <- "1_2"
+fin.outs$enjoylif[fin.outs$enjoylif==2] <- "3_4"
+fin.outs$enjoylif[fin.outs$enjoylif==3] <- "5_7"
+fin.outs$enjoylif <- as.factor(fin.outs$enjoylif)
+
+fin.outs$cryspell <- ifelse(fin.outs$cryspell >= 8, NA, fin.outs$cryspell)
+fin.outs$cryspell[fin.outs$cryspell==0] <- "<1"
+fin.outs$cryspell[fin.outs$cryspell==1] <- "1_2"
+fin.outs$cryspell[fin.outs$cryspell==2] <- "3_4"
+fin.outs$cryspell[fin.outs$cryspell==3] <- "5_7"
+fin.outs$cryspell <- as.factor(fin.outs$cryspell)
+
+fin.outs$feltsad <- ifelse(fin.outs$feltsad >= 8, NA, fin.outs$feltsad)
+fin.outs$feltsad[fin.outs$feltsad==0] <- "<1"
+fin.outs$feltsad[fin.outs$feltsad==1] <- "1_2"
+fin.outs$feltsad[fin.outs$feltsad==2] <- "3_4"
+fin.outs$feltsad[fin.outs$feltsad==3] <- "5_7"
+fin.outs$feltsad <- as.factor(fin.outs$feltsad)
+
+fin.outs$dislike <- ifelse(fin.outs$dislike >= 8, NA, fin.outs$dislike)
+fin.outs$dislike[fin.outs$dislike==0] <- "<1"
+fin.outs$dislike[fin.outs$dislike==1] <- "1_2"
+fin.outs$dislike[fin.outs$dislike==2] <- "3_4"
+fin.outs$dislike[fin.outs$dislike==3] <- "5_7"
+fin.outs$dislike <- as.factor(fin.outs$dislike)
+
+fin.outs$getgoing <- ifelse(fin.outs$getgoing >= 8, NA, fin.outs$getgoing)
+fin.outs$getgoing[fin.outs$getgoing==0] <- "<1"
+fin.outs$getgoing[fin.outs$getgoing==1] <- "1_2"
+fin.outs$getgoing[fin.outs$getgoing==2] <- "3_4"
+fin.outs$getgoing[fin.outs$getgoing==3] <- "5_7"
+fin.outs$getgoing <- as.factor(fin.outs$getgoing)
+
+fin.outs$cesscore <- ifelse(fin.outs$cesscore >= 99, NA, fin.outs$cesscore)
+fin.outs$cesscore <- as.numeric(fin.outs$cesscore)
+
+#summary(fin.outs)
+
+class.order.out <- unlist(lapply(fin.outs,class))
+numeric.columns.out <- which(class.order.out == "numeric")
+factor.columns.out <- which(class.order.out != "numeric")
+
+
+fin.outs_num <- fin.outs[rownames(fin.dat.inliers),numeric.columns.out]
+fin.outs_cat <- fin.outs[rownames(fin.dat.inliers),factor.columns.out]
+
+fin.outs_num.be <- cbind((1-expo.scale(fin.outs_num))/2,(1+expo.scale(fin.outs_num))/2)
+colnames(fin.outs_num.be) <- c(paste0(colnames(fin.outs_num),"-"),paste0(colnames(fin.outs_num),"+"))
+fin.outs_num.be <- mean.impute(fin.outs_num.be)
+fin.dat.outs <- cbind(fin.outs_num.be,makeNominalData(fin.outs_cat))
+
+#dim(fin.dat.outs)
+#summary(fin.dat.outs)
+#ca.res.outs <- epCA(fin.dat.outs,graphs=F)
+
+```
+
+```{r out_as_supp}
+sup.cols <- supplementaryCols(fin.dat.outs,res = ca.res.inliers)
+a<-prettyPlot(sup.cols$fjj,dev.new=F)
+```
+
+```{r plsca}
+plsca.res <- tepPLSCA(DATA1 = fin.dat.inliers,DATA2 = fin.dat.outs,make_data1_nominal = F,make_data2_nominal = F,graphs=F, DESIGN = fin.des[rownames(fin.dat.inliers),"DEMENTIA"], make_design_nominal = T)
+  ## type doesn't seem to be a big deal, but inst vs. community is for both LVs, but more so on LV2 than 1.
+
+## there are clearly 3 LVs that need interpretation
+## I think 3 is a big deal -- there is a caregiver education component.
+
+## need some resamplin' here
 
 
 ```
