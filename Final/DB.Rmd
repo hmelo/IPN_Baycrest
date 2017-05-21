@@ -13,6 +13,16 @@ require(knitr)
 require(SDMTools)
 knitr::opts_chunk$set(echo = TRUE)
 
+add.alpha <- function(col, alpha=0.65){
+	apply(
+		sapply(col, col2rgb)/255, 
+		2, 
+		function(x){
+			rgb(x[1], x[2], x[3], alpha=alpha)
+		}
+	)  
+}
+
 fast.csci <- function(DATA, REGRESSORS=NULL, rows, center=T, scale=F, main.effects.only=F, impute=T){
 	
   ## center and/or scale the data before hand.
@@ -78,6 +88,15 @@ pointsInHull <- function(pnts, points.for.hull, x_axis=1, y_axis=2, percentage=.
     out <- .Call("pip", pnts[, 1], pnts[, 2], nrow(pnts), poly.pnts[,1], poly.pnts[, 2], nrow(poly.pnts), PACKAGE = "SDMTools")
     names(out) <- rownames(pnts)
 	return(out)	
+}
+
+escofier.transform <- function(DAT,center=T,scale=T){
+	
+	scaled.DAT <- expo.scale(DAT,center=center,scale=scale)
+	escofier.DAT <- cbind((1-scaled.DAT)/2,(1+ scaled.DAT)/2)
+	colnames(escofier.DAT) <- c(paste0(colnames(scaled.DAT),"-"),paste0(colnames(scaled.DAT),"+"))
+	return(escofier.DAT)
+	
 }
 
 
@@ -581,8 +600,12 @@ factor.columns <- which(class.order != "numeric")
 fin.preds_num <- fin.preds[,numeric.columns]
 fin.preds_cat <- fin.preds[,factor.columns]
 
-fin.preds_num.be <- cbind((1-expo.scale(fin.preds_num))/2,(1+expo.scale(fin.preds_num))/2)
-colnames(fin.preds_num.be) <- c(paste0(colnames(fin.preds_num),"-"),paste0(colnames(fin.preds_num),"+"))
+#fin.preds_num.be <- cbind((1-expo.scale(fin.preds_num))/2,(1+expo.scale(fin.preds_num))/2)
+
+fin.preds_num.be <- escofier.transform(fin.preds_num)
+
+#colnames(fin.preds_num.be) <- c(paste0(colnames(fin.preds_num),"-"),paste0(colnames(fin.preds_num),"+"))
+
 fin.preds_num.be <- mean.impute(fin.preds_num.be)
 fin.dat <- cbind(fin.preds_num.be,makeNominalData(fin.preds_cat))
 
@@ -614,9 +637,11 @@ these.inliers <- which(!(chi.mahal[,1] > 3 | chi.mahal[,2] > 250))
 fin.preds_num.inliers <- fin.preds_num[these.inliers,]
 fin.preds_cat.inliers <- fin.preds_cat[these.inliers,]
 
-fin.preds_num.inliners.be <- cbind((1-expo.scale(fin.preds_num.inliers))/2,(1+expo.scale(fin.preds_num.inliers))/2)
+fin.preds_num.inliners.be <- escofier.transform(fin.preds_num.inliers)
 
-colnames(fin.preds_num.inliners.be) <- c(paste0(colnames(fin.preds_num.inliers),"-"),paste0(colnames(fin.preds_num.inliers),"+"))
+#fin.preds_num.inliners.be <- cbind((1-expo.scale(fin.preds_num.inliers))/2,(1+expo.scale(fin.preds_num.inliers))/2)
+
+#colnames(fin.preds_num.inliners.be) <- c(paste0(colnames(fin.preds_num.inliers),"-"),paste0(colnames(fin.preds_num.inliers),"+"))
 
 fin.preds_num.inliners.be <- mean.impute(fin.preds_num.inliners.be)
 
@@ -977,8 +1002,10 @@ factor.columns.out <- which(class.order.out != "numeric")
 fin.outs_num <- fin.outs[rownames(fin.dat.inliers),numeric.columns.out]
 fin.outs_cat <- fin.outs[rownames(fin.dat.inliers),factor.columns.out]
 
-fin.outs_num.be <- cbind((1-expo.scale(fin.outs_num))/2,(1+expo.scale(fin.outs_num))/2)
-colnames(fin.outs_num.be) <- c(paste0(colnames(fin.outs_num),"-"),paste0(colnames(fin.outs_num),"+"))
+fin.outs_num.be <- escofier.transform(fin.outs_num)
+
+#fin.outs_num.be <- cbind((1-expo.scale(fin.outs_num))/2,(1+expo.scale(fin.outs_num))/2)
+#colnames(fin.outs_num.be) <- c(paste0(colnames(fin.outs_num),"-"),paste0(colnames(fin.outs_num),"+"))
 fin.outs_num.be <- mean.impute(fin.outs_num.be)
 fin.dat.outs <- cbind(fin.outs_num.be,makeNominalData(fin.outs_cat))
 
@@ -993,7 +1020,7 @@ sup.cols <- supplementaryCols(fin.dat.outs,res = ca.res.inliers)
 a<-prettyPlot(sup.cols$fjj,dev.new=F)
 ```
 
-```{r plsca}
+```{r plsca, echo=F}
 plsca.res <- tepPLSCA(DATA1 = fin.dat.inliers,DATA2 = fin.dat.outs,make_data1_nominal = F,make_data2_nominal = F,graphs=F, DESIGN = fin.des[rownames(fin.dat.inliers),"DEMENTIA"], make_design_nominal = T)
   ## type doesn't seem to be a big deal, but inst vs. community is for both LVs, but more so on LV2 than 1.
 
@@ -1001,6 +1028,112 @@ plsca.res <- tepPLSCA(DATA1 = fin.dat.inliers,DATA2 = fin.dat.outs,make_data1_no
 ## I think 3 is a big deal -- there is a caregiver education component.
 
 ## need some resamplin' here
+boot.iters <- 100
+fi.boot <- array(NA,dim=c(nrow(plsca.res$TExPosition.Data$fi),length(plsca.res$TExPosition.Data$eigs),boot.iters))
+	rownames(fi.boot) <- rownames(plsca.res$TExPosition.Data$fi)
+fj.boot <- array(NA,dim=c(nrow(plsca.res$TExPosition.Data$fj),length(plsca.res$TExPosition.Data$eigs),boot.iters))
+	rownames(fj.boot) <- rownames(plsca.res$TExPosition.Data$fj)
+	
+FIN.DX.DES <- makeNominalData(as.matrix(fin.des[rownames(fin.dat.inliers),"DEMENTIA"]))	
+for(i in 1:boot.iters){
+  boot.sample <- boot.samples(fin.dat.inliers,FIN.DX.DES,T)
+  DAT1.boot <- fin.dat.inliers[boot.sample,]
+  DAT2.boot <- fin.dat.outs[boot.sample,]  
+ 
+  boot.R <- t(DAT1.boot) %*% DAT2.boot
+	fi.boot[,,i] <- (rowNorms(boot.R,type="ca") %*% plsca.res$TExPosition.Data$fj %*% diag(1/plsca.res$TExPosition.Data$pdq$Dv))
+	fi.boot[is.na(fi.boot)] <- 0
+	fj.boot[,,i] <- rowNorms(t(boot.R),type="ca") %*% plsca.res$TExPosition.Data$fi %*% diag(1/plsca.res$TExPosition.Data$pdq$Dv)
+	fj.boot[is.na(fj.boot)] <- 0
+   
+}
+
+fi.bsrs <- boot.ratio.test(fi.boot,critical.value = 3.5)
+fj.bsrs <- boot.ratio.test(fj.boot,critical.value = 3.5)	## stability of each point; but because of dual coding this is incorrect.
+
+
+### I have to pick up here and clean up the plotting code.
+  ## I should make a function to make this easier
+
+## OK now plot 1 & 2 with grey80 dots then sig dots
+plot(plsca.res$TExPosition.Data$fi,pch=20,col=add.alpha("grey80"),cex=.5,asp=NA,axes=F)
+abline(h=0)
+abline(v=0)
+
+fi.1or2 <- which(rowSums(fi.bsrs$sig.boot.ratios[,1:2])>0)
+fi.1 <- setdiff(fi.1or2,which(fi.bsrs$sig.boot.ratios[,2]))
+fi.2 <- setdiff(fi.1or2,which(fi.bsrs$sig.boot.ratios[,1]))
+fi.1and2 <- which(fi.bsrs$sig.boot.ratios[,1]==1 & fi.bsrs$sig.boot.ratios[,2]==1)
+
+points(plsca.res$TExPosition.Data$fi[fi.1,],col="green",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fi[fi.1,],rownames(plsca.res$TExPosition.Data$fi[fi.1,]),col="green",pch=20,pos=3)
+
+points(plsca.res$TExPosition.Data$fi[fi.2,],col="purple",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fi[fi.2,],rownames(plsca.res$TExPosition.Data$fi[fi.2,]),col="purple",pch=20,pos=3)
+
+#points(plsca.res$TExPosition.Data$fi[fi.1and2,],col="red",pch=20,cex=2)
+#text(plsca.res$TExPosition.Data$fi[fi.1and2,],rownames(plsca.res$TExPosition.Data$fi[fi.1and2,]),col="red",pch=20,pos=3)
+
+
+## OK now plot 1 & 2 with grey80 dots then sig dots
+plot(plsca.res$TExPosition.Data$fj,pch=20,col=add.alpha("grey80"),cex=.5,asp=NA,axes=F)
+abline(h=0)
+abline(v=0)
+
+fj.1or2 <- which(rowSums(fj.bsrs$sig.boot.ratios[,1:2])>0)
+fj.1 <- setdiff(fj.1or2,which(fj.bsrs$sig.boot.ratios[,2]))
+fj.2 <- setdiff(fj.1or2,which(fj.bsrs$sig.boot.ratios[,1]))
+fj.1and2 <- which(fj.bsrs$sig.boot.ratios[,1]==1 & fj.bsrs$sig.boot.ratios[,2]==1)
+
+points(plsca.res$TExPosition.Data$fj[fj.1,],col="green",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fj[fj.1,],rownames(plsca.res$TExPosition.Data$fj[fj.1,]),col="green",pch=20,pos=3)
+
+points(plsca.res$TExPosition.Data$fj[fj.2,],col="purple",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fj[fj.2,],rownames(plsca.res$TExPosition.Data$fj[fj.2,]),col="purple",pch=20,pos=3)
+
+points(plsca.res$TExPosition.Data$fj[fj.1and2,],col="red",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fj[fj.1and2,],rownames(plsca.res$TExPosition.Data$fj[fj.1and2,]),col="red",pch=20,pos=3)
+
+
+## OK now plot 1 & 2 with grey80 dots then sig dots
+plot(plsca.res$TExPosition.Data$fi[,c(2:3)],pch=20,col=add.alpha("grey80"),cex=.5,asp=NA,axes=F)
+abline(h=0)
+abline(v=0)
+
+fi.2or3 <- which(rowSums(fi.bsrs$sig.boot.ratios[,2:3])>0)
+fi.2 <- setdiff(fi.2or3,which(fi.bsrs$sig.boot.ratios[,3]))
+fi.3 <- setdiff(fi.2or3,which(fi.bsrs$sig.boot.ratios[,2]))
+fi.2and2 <- which(fi.bsrs$sig.boot.ratios[,2]==1 & fi.bsrs$sig.boot.ratios[,3]==1)
+
+points(plsca.res$TExPosition.Data$fi[fi.2,c(2:3)],col="green",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fi[fi.2,c(2:3)],rownames(plsca.res$TExPosition.Data$fi[fi.2,c(2:3)]),col="green",pch=20,pos=3)
+
+points(plsca.res$TExPosition.Data$fi[fi.3,c(2:3)],col="purple",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fi[fi.3,c(2:3)],rownames(plsca.res$TExPosition.Data$fi[fi.3,c(2:3)]),col="purple",pch=20,pos=3)
+
+points(plsca.res$TExPosition.Data$fi[fi.2and2,c(2:3)],col="red",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fi[fi.2and2,c(2:3)],rownames(plsca.res$TExPosition.Data$fi[fi.2and2,c(2:3)]),col="red",pch=20,pos=3)
+
+dev.new()
+## OK now plot 1 & 2 with grey80 dots then sig dots
+plot(plsca.res$TExPosition.Data$fj[,c(2:3)],pch=20,col=add.alpha("grey80"),cex=.5,asp=NA,axes=F)
+abline(h=0)
+abline(v=0)
+
+fj.2or2 <- which(rowSums(fj.bsrs$sig.boot.ratios[,2:3])>0)
+fj.2 <- setdiff(fj.2or2,which(fj.bsrs$sig.boot.ratios[,3]))
+fj.3 <- setdiff(fj.2or2,which(fj.bsrs$sig.boot.ratios[,2]))
+fj.2and3 <- which(fj.bsrs$sig.boot.ratios[,2]==1 & fj.bsrs$sig.boot.ratios[,3]==1)
+
+points(plsca.res$TExPosition.Data$fj[fj.2,c(2:3)],col="green",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fj[fj.2,c(2:3)],rownames(plsca.res$TExPosition.Data$fj[fj.2,c(2:3)]),col="green",pch=20,pos=3)
+
+points(plsca.res$TExPosition.Data$fj[fj.3,c(2:3)],col="purple",pch=20,cex=2)
+text(plsca.res$TExPosition.Data$fj[fj.3,c(2:3)],rownames(plsca.res$TExPosition.Data$fj[fj.3,c(2:3)]),col="purple",pch=20,pos=3)
+
+#points(plsca.res$TExPosition.Data$fj[fj.2and3,c(2:3)],col="red",pch=20,cex=2)
+#text(plsca.res$TExPosition.Data$fj[fj.2and3,c(2:3)],rownames(plsca.res$TExPosition.Data$fj[fj.2and3,c(2:3)]),col="red",pch=20,pos=3)
+
 
 
 ```
