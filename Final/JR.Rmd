@@ -1,48 +1,45 @@
 ---
 title: "IPN Analyses"
 author: "Jenny Rieck"
-date: "May 19, 2017"
+date: "May 23, 2017"
 output:
-  pdf_document: default
-  html_document: default
+html_document: default
 ---
 
 ```{r setup, include=FALSE}
-require(ExPosition)
+require(TInPosition)
 require(knitr)
-knitr::opts_chunk$set(echo = TRUE)
-
+knitr::opts_chunk$set(echo = T)
+options(warn = -1)
 fast.csci <- function(DATA, REGRESSORS=NULL, rows, center=T, scale=F, main.effects.only=F, impute=T){
-	
+  
   ## center and/or scale the data before hand.
-	DATA <- expo.scale(DATA[rows,],center=center,scale=scale)
-	
-	## correct (residualize) the data by confounds
-	if(!is.null(REGRESSORS)){
-  	if(main.effects.only){
-  		this.formula <- "x~."
-  	}else{
-  		this.formula <- paste0("x~.^",ncol(REGRESSORS[rows,]))
-  	}	  
-  	DATA <- apply(
-  					DATA,
-  					2,
-  					function(x){ 
-  						resid( lm( as.formula(this.formula), data = REGRESSORS[rows,], na.action = na.exclude) )
-  					}
-  			)
-	}
-	
-	
-	
-	## impute to mean
-	if(impute){
-		mean.impute(DATA)
-	}
-	
+  DATA <- expo.scale(DATA[rows,],center=center,scale=scale)
+  
+  ## correct (residualize) the data by confounds
+  if(!is.null(REGRESSORS)){
+    if(main.effects.only){
+      this.formula <- "x~."
+    }else{
+      this.formula <- paste0("x~.^",ncol(REGRESSORS[rows,]))
+    }	  
+    DATA <- apply(
+      DATA,
+      2,
+      function(x){ 
+        resid( lm( as.formula(this.formula), data = REGRESSORS[rows,], na.action = na.exclude) )
+      }
+    )
+  }
+  
+  ## impute to mean
+  if(impute){
+    mean.impute(DATA)
+  }
+  
   ## replace tiny values by 0
-	DATA[which( abs(DATA) < .Machine$double.eps )] <- 0	
-	return(DATA)
+  DATA[which( abs(DATA) < .Machine$double.eps )] <- 0	
+  return(DATA)
 }
 
 mean.impute <- function(DATA){
@@ -50,29 +47,754 @@ mean.impute <- function(DATA){
   return(DATA)
 }
 
-load('./fin.des.rda')
-load('./fin.des.nom.rda')
-load('./fin.outs.rda')
-load('./fin.preds.rda')
+escofier.transform <- function(DAT,center=T,scale=T){
+  
+  scaled.DAT <- expo.scale(DAT,center=center,scale=scale)
+  escofier.DAT <- cbind((1-scaled.DAT)/2,(1+ scaled.DAT)/2)
+  colnames(escofier.DAT) <- c(paste0(colnames(scaled.DAT),"-"),paste0(colnames(scaled.DAT),"+"))
+  return(escofier.DAT)
+  
+}
+bootsy.bars<-function(bootsy,ci){
+  samples<-dim(bootsy)[3]
+  upper<- samples*(1-((1-ci)/2))
+  lower<- samples*(1-ci)/2
+  
+  CIs.up<-matrix(0,dim(bootsy)[1],dim(bootsy)[2])
+  CIs.lo<-matrix(0,dim(bootsy)[1],dim(bootsy)[2])
+  
+  for(f in 1:dim(bootsy)[2]){
+    for(g in 1:dim(bootsy)[1]){
+      sortsy<-sort(bootsy[g,f,])
+      uppersy<-sortsy[upper]
+      lowersy<-sortsy[lower]
+      CIs.up[g,f]<-uppersy
+      CIs.lo[g,f]<-lowersy
+      
+    }
+  }
+  return(list(CIs.up = CIs.up,CIs.lo = CIs.lo))
+}
+
+load('fin.preds.rda')
+load('fin.des.nom.rda')
+load('fin.des.rda')
+load('fin.outs.rda')
 ```
 
 
-# Introduction 
+## Introduction 
+These analyses examine differences in caregivers of community- vs institution-based patients as well as their caregivers.
 
-# Code & Analyses
+## Code & Analyses
 
-An example of `mean.impute` and `fast.csci` in use. We will first use `mean.impute` to impute missing data to the mean for `health1`. We will then use `fast.csci` to correct `zarscore` and `health1` by the age and sex of the participant. NOTE: `fast.csci` has to be used with some caution. Be very careful if using this to correct values when there are mixed data (e.g., predictors are mixes of factors and numeric) and only use it on outcomes that are numeric. Further, `fast.csci` requires more than 1 predictor. If you have only a single predictor you can use something like: `resid(lm(outcome~predictor,na.action = na.exclude))`
+### Patient Analysis - Traits of Community vs Institution based Patients 
+This first analysis examines which patient traits are more prevelent in community vs institution based patients. 
 
-```{r impute_csci_example}
+Following code from Derek, the predictor variables are recoded according to their corresponding question response. A responses are imputed to the mean via the make_nominal_data function.
+```{r preliminary_clean_up_predictors, echo=F,results="hide"}
+### Recoding of predictors from Derek
+fin.preds$studysex <- ifelse(fin.preds$studysex==1,"MALE","FEMALE")
+fin.preds$studysex <- as.factor(fin.preds$studysex)
 
-  health1_impute <- mean.impute(as.matrix(fin.outs[,"health1"]))
-  summary(cbind(fin.outs[,"health1"],health1_impute))
+fin.preds$clinage <- ifelse(fin.preds$clinage>=777,NA,fin.preds$clinage)
+fin.preds$clinage <- as.numeric(fin.preds$clinage)
 
-  fin.preds$clinage <- as.numeric(fin.preds$clinage)
-  fin.preds$studysex <- as.factor(fin.preds$studysex)
-  health.corrected <- fast.csci(fin.outs[,c("health1","zarscore")],fin.preds[,c("clinage","studysex")],rownames(fin.preds),T,F,T,T)
- head(health.corrected)
- 
+fin.preds$studyed <- ifelse(fin.preds$studyed>=99,NA,fin.preds$studyed)
+fin.preds$studyed <- as.numeric(fin.preds$studyed) ## consider factorizing this if distribution is weird.
+
+fin.preds$cgsex <- ifelse(fin.preds$cgsex==1,"MALE","FEMALE")
+fin.preds$cgsex <- as.factor(fin.preds$cgsex)
+
+fin.preds$cgage <- ifelse(fin.preds$cgage==999,NA,fin.preds$cgage)
+fin.preds$cgage <- as.numeric(fin.preds$cgage)
+
+fin.preds$cgedyrs <- ifelse(fin.preds$cgedyrs>=88,NA,fin.preds$cgedyrs)
+fin.preds$cgedyrs <- as.numeric(fin.preds$cgedyrs)
+
+fin.preds$cgedlev <- ifelse(fin.preds$cgedlev>=77,NA,fin.preds$cgedlev)
+fin.preds$cgedlev[fin.preds$cgedlev==1 | fin.preds$cgedlev==2 | fin.preds$cgedlev==3 | fin.preds$cgedlev==4] <- "<HS"
+fin.preds$cgedlev[fin.preds$cgedlev==5] <- "HS"
+fin.preds$cgedlev[fin.preds$cgedlev==6 | fin.preds$cgedlev==7 | fin.preds$cgedlev==8] <- "<BACHELORS"
+fin.preds$cgedlev[fin.preds$cgedlev==9] <- "BACHELORS"
+fin.preds$cgedlev[fin.preds$cgedlev==10] <- "MASTERS"  
+fin.preds$cgedlev[fin.preds$cgedlev==11] <- "PHD"    
+fin.preds$cgedlev[fin.preds$cgedlev==12] <- "OTHER"  
+fin.preds$cgedlev <- as.factor(fin.preds$cgedlev)
+
+
+fin.preds$apathy <- ifelse(fin.preds$apathy >= 5, NA, fin.preds$apathy)
+fin.preds$apathy[fin.preds$apathy==1] <- "YES"
+fin.preds$apathy[fin.preds$apathy==2] <- "MAYBE"
+fin.preds$apathy[fin.preds$apathy==3] <- "NO"
+fin.preds$apathy[fin.preds$apathy==4] <- "NOT_RELEVANT"
+fin.preds$apathy <- as.factor(fin.preds$apathy)
+
+fin.preds$wander <- ifelse(fin.preds$wander >= 5, NA, fin.preds$wander)
+fin.preds$wander[fin.preds$wander==1] <- "YES"
+fin.preds$wander[fin.preds$wander==2] <- "MAYBE"
+fin.preds$wander[fin.preds$wander==3] <- "NO"
+fin.preds$wander[fin.preds$wander==4] <- "NOT_RELEVANT"
+fin.preds$wander <- as.factor(fin.preds$wander)
+
+fin.preds$violenc <- ifelse(fin.preds$violenc >= 5, NA, fin.preds$violenc)
+fin.preds$violenc[fin.preds$violenc==1] <- "YES"
+fin.preds$violenc[fin.preds$violenc==2] <- "MAYBE"
+fin.preds$violenc[fin.preds$violenc==3] <- "NO"
+fin.preds$violenc[fin.preds$violenc==4] <- "NOT_RELEVANT"
+fin.preds$violenc <- as.factor(fin.preds$violenc)
+
+fin.preds$disinhi <- ifelse(fin.preds$disinhi >= 5, NA, fin.preds$disinhi)
+fin.preds$disinhi[fin.preds$disinhi==1] <- "YES"
+fin.preds$disinhi[fin.preds$disinhi==2] <- "MAYBE"
+fin.preds$disinhi[fin.preds$disinhi==3] <- "NO"
+fin.preds$disinhi[fin.preds$disinhi==4] <- "NOT_RELEVANT"
+fin.preds$disinhi <- as.factor(fin.preds$disinhi)
+
+fin.preds$otherbe <- ifelse(fin.preds$otherbe >= 5, NA, fin.preds$otherbe)
+fin.preds$otherbe[fin.preds$otherbe==1] <- "YES"
+fin.preds$otherbe[fin.preds$otherbe==2] <- "MAYBE"
+fin.preds$otherbe[fin.preds$otherbe==3] <- "NO"
+fin.preds$otherbe[fin.preds$otherbe==4] <- "NOT_RELEVANT"
+fin.preds$otherbe <- as.factor(fin.preds$otherbe)
+
+fin.preds$sad <- ifelse(fin.preds$sad >= 8, NA, fin.preds$sad)
+fin.preds$sad[fin.preds$sad==0] <- "NO"
+fin.preds$sad[fin.preds$sad==1] <- "YES"
+fin.preds$sad <- as.factor(fin.preds$sad)
+
+fin.preds$interest <- ifelse(fin.preds$interest >= 8, NA, fin.preds$interest)
+fin.preds$interest[fin.preds$interest==0] <- "NO"
+fin.preds$interest[fin.preds$interest==1] <- "YES"
+fin.preds$interest <- as.factor(fin.preds$interest)
+
+fin.preds$appetite <- ifelse(fin.preds$appetite >= 8, NA, fin.preds$appetite)
+fin.preds$appetite[fin.preds$appetite==0] <- "NO"
+fin.preds$appetite[fin.preds$appetite==1] <- "YES"
+fin.preds$appetite <- as.factor(fin.preds$appetite)
+
+fin.preds$lossweig <- ifelse(fin.preds$lossweig >= 8, NA, fin.preds$lossweig)
+fin.preds$lossweig[fin.preds$lossweig==0] <- "NO"
+fin.preds$lossweig[fin.preds$lossweig==1] <- "YES"
+fin.preds$lossweig <- as.factor(fin.preds$lossweig)
+
+fin.preds$asleep <- ifelse(fin.preds$asleep >= 8, NA, fin.preds$asleep)
+fin.preds$asleep[fin.preds$asleep==0] <- "NO"
+fin.preds$asleep[fin.preds$asleep==1] <- "YES"
+fin.preds$asleep <- as.factor(fin.preds$asleep)
+
+fin.preds$awaken <- ifelse(fin.preds$awaken >= 8, NA, fin.preds$awaken)
+fin.preds$awaken[fin.preds$awaken==0] <- "NO"
+fin.preds$awaken[fin.preds$awaken==1] <- "YES"
+fin.preds$awaken <- as.factor(fin.preds$awaken)
+
+fin.preds$allday <- ifelse(fin.preds$allday >= 8, NA, fin.preds$allday)
+fin.preds$allday[fin.preds$allday==0] <- "NO"
+fin.preds$allday[fin.preds$allday==1] <- "YES"
+fin.preds$allday <- as.factor(fin.preds$allday)
+
+fin.preds$tiredall <- ifelse(fin.preds$tiredall >= 8, NA, fin.preds$tiredall)
+fin.preds$tiredall[fin.preds$tiredall==0] <- "NO"
+fin.preds$tiredall[fin.preds$tiredall==1] <- "YES"
+fin.preds$tiredall <- as.factor(fin.preds$tiredall)
+
+fin.preds$move <- ifelse(fin.preds$move >= 8, NA, fin.preds$move)
+fin.preds$move[fin.preds$move==0] <- "NO"
+fin.preds$move[fin.preds$move==1] <- "YES"
+fin.preds$move <- as.factor(fin.preds$move)
+
+fin.preds$worthles <- ifelse(fin.preds$worthles >= 8, NA, fin.preds$worthles)
+fin.preds$worthles[fin.preds$worthles==0] <- "NO"
+fin.preds$worthles[fin.preds$worthles==1] <- "YES"
+fin.preds$worthles <- as.factor(fin.preds$worthles)
+
+fin.preds$suicide <- ifelse(fin.preds$suicide >= 8, NA, fin.preds$suicide)
+fin.preds$suicide[fin.preds$suicide==0] <- "NO"
+fin.preds$suicide[fin.preds$suicide==1] <- "YES"
+fin.preds$suicide <- as.factor(fin.preds$suicide)
+
+fin.preds$impress <- ifelse(fin.preds$impress >= 5, NA, fin.preds$impress)
+fin.preds$impress[fin.preds$impress==1] <- "YES"
+fin.preds$impress[fin.preds$impress==2] <- "MAYBE"
+fin.preds$impress[fin.preds$impress==3] <- "NO"
+fin.preds$impress[fin.preds$impress==4] <- "NOT_RELEVANT"
+fin.preds$impress <- as.factor(fin.preds$impress)
+
+fin.preds$shorterm <- ifelse(fin.preds$shorterm >= 8, NA, fin.preds$shorterm)
+fin.preds$shorterm[fin.preds$shorterm==0] <- "NO"
+fin.preds$shorterm[fin.preds$shorterm==1] <- "YES"
+fin.preds$shorterm <- as.factor(fin.preds$shorterm)
+
+fin.preds$longterm <- ifelse(fin.preds$longterm >= 8, NA, fin.preds$longterm)
+fin.preds$longterm[fin.preds$longterm==0] <- "NO"
+fin.preds$longterm[fin.preds$longterm==1] <- "YES"
+fin.preds$longterm <- as.factor(fin.preds$longterm)
+
+fin.preds$abstract <- ifelse(fin.preds$abstract >= 8, NA, fin.preds$abstract)
+fin.preds$abstract[fin.preds$abstract==0] <- "NO"
+fin.preds$abstract[fin.preds$abstract==1] <- "YES"
+fin.preds$abstract <- as.factor(fin.preds$abstract)
+
+fin.preds$judgemen <- ifelse(fin.preds$judgemen >= 8, NA, fin.preds$judgemen)
+fin.preds$judgemen[fin.preds$judgemen==0] <- "NO"
+fin.preds$judgemen[fin.preds$judgemen==1] <- "YES"
+fin.preds$judgemen <- as.factor(fin.preds$judgemen)
+
+fin.preds$aphasia <- ifelse(fin.preds$aphasia >= 8, NA, fin.preds$aphasia)
+fin.preds$aphasia[fin.preds$aphasia==0] <- "NO"
+fin.preds$aphasia[fin.preds$aphasia==1] <- "YES"
+fin.preds$aphasia <- as.factor(fin.preds$aphasia)
+
+fin.preds$apraxia <- ifelse(fin.preds$apraxia >= 8, NA, fin.preds$apraxia)
+fin.preds$apraxia[fin.preds$apraxia==0] <- "NO"
+fin.preds$apraxia[fin.preds$apraxia==1] <- "YES"
+fin.preds$apraxia <- as.factor(fin.preds$apraxia)
+
+fin.preds$change <- ifelse(fin.preds$change >= 8, NA, fin.preds$change)
+fin.preds$change[fin.preds$change==0] <- "NO"
+fin.preds$change[fin.preds$change==1] <- "YES"
+fin.preds$change <- as.factor(fin.preds$change)
+
+fin.preds$work <- ifelse(fin.preds$work >= 8, NA, fin.preds$work)
+fin.preds$work[fin.preds$work==0] <- "NO"
+fin.preds$work[fin.preds$work==1] <- "YES"
+fin.preds$work <- as.factor(fin.preds$work)
+
+fin.preds$social <- ifelse(fin.preds$social >= 8, NA, fin.preds$social)
+fin.preds$social[fin.preds$social==0] <- "NO"
+fin.preds$social[fin.preds$social==1] <- "YES"
+fin.preds$social <- as.factor(fin.preds$social)
+
+fin.preds$relation <- ifelse(fin.preds$relation >= 8, NA, fin.preds$relation)
+fin.preds$relation[fin.preds$relation==0] <- "NO"
+fin.preds$relation[fin.preds$relation==1] <- "YES"
+fin.preds$relation <- as.factor(fin.preds$relation)
+
+fin.preds$dbdscore <- ifelse(fin.preds$dbdscore == 99, NA, fin.preds$dbdscore)
+fin.preds$dbdscore <- as.numeric(fin.preds$dbdscore)
+
+fin.preds$adlrate[fin.preds$adlrate==2] <- "EXCELLENT.or.GOOD"
+fin.preds$adlrate[fin.preds$adlrate==3] <- "MILD.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==4] <- "MODERATE.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==5] <- "SEVERE.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==6] <- "TOTAL.IMPAIRMENT"
+fin.preds$adlrate[fin.preds$adlrate==9] <- NA
+fin.preds$adlrate <- as.factor(fin.preds$adlrate)
+
+fin.preds$c238 <- ifelse(fin.preds$c238 >= 8, NA, fin.preds$c238)
+fin.preds$c238[fin.preds$c238==0] <- "NO"
+fin.preds$c238[fin.preds$c238==1] <- "YES"
+fin.preds$c238 <- as.factor(fin.preds$c238)
+
+fin.preds$c239 <- ifelse(fin.preds$c239 >= 8, NA, fin.preds$c239)
+fin.preds$c239[fin.preds$c239==0] <- "NO"
+fin.preds$c239[fin.preds$c239==1] <- "YES"
+fin.preds$c239 <- as.factor(fin.preds$c239)
+
+fin.preds$c240 <- ifelse(fin.preds$c240 >= 8, NA, fin.preds$c240)
+fin.preds$c240[fin.preds$c240==0] <- "NO"
+fin.preds$c240[fin.preds$c240==1] <- "YES"
+fin.preds$c240 <- as.factor(fin.preds$c240)
+
+fin.preds$c241 <- ifelse(fin.preds$c241 >= 8, NA, fin.preds$c241)
+fin.preds$c241[fin.preds$c241==0] <- "NO"
+fin.preds$c241[fin.preds$c241==1] <- "LESS"
+fin.preds$c241[fin.preds$c241==2] <- "MORE"
+fin.preds$c241 <- as.factor(fin.preds$c241)
+
+fin.preds$c242 <- ifelse(fin.preds$c242 >= 8, NA, fin.preds$c242)
+fin.preds$c242[fin.preds$c242==0] <- "NO"
+fin.preds$c242[fin.preds$c242==1] <- "LESS"
+fin.preds$c242[fin.preds$c242==2] <- "MORE"
+fin.preds$c242 <- as.factor(fin.preds$c242)
+
+fin.preds$c243 <- ifelse(fin.preds$c243 >= 8, NA, fin.preds$c243)
+fin.preds$c243[fin.preds$c243==0] <- "NO"
+fin.preds$c243[fin.preds$c243==1] <- "YES"
+fin.preds$c243 <- as.factor(fin.preds$c243)
+
+fin.preds$c244 <- ifelse(fin.preds$c244 >= 8, NA, fin.preds$c244)
+fin.preds$c244[fin.preds$c244==0] <- "NO"
+fin.preds$c244[fin.preds$c244==1] <- "LESS"
+fin.preds$c244[fin.preds$c244==2] <- "MORE"
+fin.preds$c244 <- as.factor(fin.preds$c244)
+
+fin.preds$c246 <- ifelse(fin.preds$c246 >= 8, NA, fin.preds$c246)
+fin.preds$c246[fin.preds$c246==0] <- "GRADUAL"
+fin.preds$c246[fin.preds$c246==1] <- "SUDDEN"
+fin.preds$c246[fin.preds$c246==7] <- "NONE"
+fin.preds$c246 <- as.factor(fin.preds$c246)
+
+fin.preds$c247 <- ifelse(fin.preds$c247 >= 8, NA, fin.preds$c247)
+fin.preds$c247[fin.preds$c247==0] <- "NO"
+fin.preds$c247[fin.preds$c247==1] <- "SLIGHT"
+fin.preds$c247[fin.preds$c247==2] <- "GREAT"
+fin.preds$c247 <- as.factor(fin.preds$c247)
+
+fin.preds$c248 <- ifelse(fin.preds$c248 >= 8, NA, fin.preds$c248)
+fin.preds$c248[fin.preds$c248==0] <- "NO"
+fin.preds$c248[fin.preds$c248==1] <- "SLIGHT"
+fin.preds$c248[fin.preds$c248==2] <- "GREAT"
+fin.preds$c248 <- as.factor(fin.preds$c248)
+
+fin.preds$c249 <- ifelse(fin.preds$c249 >= 8, NA, fin.preds$c249)
+fin.preds$c249[fin.preds$c249==0] <- "NO"
+fin.preds$c249[fin.preds$c249==1] <- "SLIGHT"
+fin.preds$c249[fin.preds$c249==2] <- "GREAT"
+fin.preds$c249 <- as.factor(fin.preds$c249)
+
+fin.preds$c250 <- ifelse(fin.preds$c250 >= 8, NA, fin.preds$c250)
+fin.preds$c250[fin.preds$c250==0] <- "NO"
+fin.preds$c250[fin.preds$c250==1] <- "SLIGHT"
+fin.preds$c250[fin.preds$c250==2] <- "GREAT"
+fin.preds$c250 <- as.factor(fin.preds$c250)
+
+fin.preds$c254 <- ifelse(fin.preds$c254 >= 8, NA, fin.preds$c254)
+fin.preds$c254[fin.preds$c254==0] <- "NO"
+fin.preds$c254[fin.preds$c254==1] <- "YES"
+fin.preds$c254 <- as.factor(fin.preds$c254)
+
+fin.preds$c255 <- ifelse(fin.preds$c255 >= 8, NA, fin.preds$c255)
+fin.preds$c255[fin.preds$c255==0] <- "NO"
+fin.preds$c255[fin.preds$c255==1] <- "SOMETIMES"
+fin.preds$c255[fin.preds$c255==2] <- "OFTEN"
+fin.preds$c255 <- as.factor(fin.preds$c255)
+
+fin.preds$c256 <- ifelse(fin.preds$c256 >= 8, NA, fin.preds$c256)
+fin.preds$c256[fin.preds$c256==0] <- "NO"
+fin.preds$c256[fin.preds$c256==1] <- "YES"
+fin.preds$c256 <- as.factor(fin.preds$c256)
+
+fin.preds$c257 <- ifelse(fin.preds$c257 >= 8, NA, fin.preds$c257)
+fin.preds$c257[fin.preds$c257==0] <- "NO"
+fin.preds$c257[fin.preds$c257==1] <- "YES"
+fin.preds$c257 <- as.factor(fin.preds$c257)
+
+fin.preds$c258 <- ifelse(fin.preds$c258 >= 8, NA, fin.preds$c258)
+fin.preds$c258[fin.preds$c258==0] <- "NO"
+fin.preds$c258[fin.preds$c258==1] <- "YES"
+fin.preds$c258 <- as.factor(fin.preds$c258)
+
+fin.preds$c259 <- ifelse(fin.preds$c259 >= 8, NA, fin.preds$c259)
+fin.preds$c259[fin.preds$c259==0] <- "NO"
+fin.preds$c259[fin.preds$c259==1] <- "YES"
+fin.preds$c259 <- as.factor(fin.preds$c259)
+
+fin.preds$c261 <- ifelse(fin.preds$c261 >= 8, NA, fin.preds$c261)
+fin.preds$c261[fin.preds$c261==0] <- "GRADUAL"
+fin.preds$c261[fin.preds$c261==1] <- "SUDDEN"
+fin.preds$c261[fin.preds$c261==7] <- "NONE"
+fin.preds$c261 <- as.factor(fin.preds$c261)
+
+fin.preds$c262 <- ifelse(fin.preds$c262 >= 8, NA, fin.preds$c262)
+fin.preds$c262[fin.preds$c262==0] <- "GRADUAL"
+fin.preds$c262[fin.preds$c262==1] <- "SUDDEN"
+fin.preds$c262[fin.preds$c262==7] <- "NONE"
+fin.preds$c262 <- as.factor(fin.preds$c262)
+
+fin.preds$c263 <- ifelse(fin.preds$c263 >= 8, NA, fin.preds$c263)
+fin.preds$c263[fin.preds$c263==0] <- "NO"
+fin.preds$c263[fin.preds$c263==1] <- "SLIGHT"
+fin.preds$c263[fin.preds$c263==2] <- "GREAT"
+fin.preds$c263 <- as.factor(fin.preds$c263)
+
+fin.preds$c264 <- ifelse(fin.preds$c264 >= 8, NA, fin.preds$c264)
+fin.preds$c264[fin.preds$c264==0] <- "NO"
+fin.preds$c264[fin.preds$c264==1] <- "SLIGHT"
+fin.preds$c264[fin.preds$c264==2] <- "GREAT"
+fin.preds$c264 <- as.factor(fin.preds$c264)
+
+fin.preds$c265[fin.preds$c265>=8] <- NA
+fin.preds$c265[fin.preds$c265==0] <- "NO"
+fin.preds$c265[fin.preds$c265==2] <- "MESSY"
+fin.preds$c265[fin.preds$c265==4] <- "SIMPLE.SOLIDS"
+fin.preds$c265[fin.preds$c265==6] <- "HAS.TO.BE.FED"
+fin.preds$c265 <- as.factor(fin.preds$c265)
+
+fin.preds$c266[fin.preds$c266>=8] <- NA
+fin.preds$c266[fin.preds$c266==0] <- "NO"
+fin.preds$c266[fin.preds$c266==2] <- "OCCASIONAL"
+fin.preds$c266[fin.preds$c266==4] <- "WRONG"
+fin.preds$c266[fin.preds$c266==6] <- "UNABLE"
+fin.preds$c266 <- as.factor(fin.preds$c266)
+
+fin.preds$c267[fin.preds$c267>=8] <- NA
+fin.preds$c267[fin.preds$c267==0] <- "NO"
+fin.preds$c267[fin.preds$c267==2] <- "OCCASIONAL"
+fin.preds$c267[fin.preds$c267==4] <- "OFTEN"
+fin.preds$c267[fin.preds$c267==6] <- "DOUBLY"
+fin.preds$c267 <- as.factor(fin.preds$c267)
+
+fin.preds$c269 <- ifelse(fin.preds$c269 >= 8, NA, fin.preds$c269)
+fin.preds$c269[fin.preds$c269==0] <- "GRADUAL"
+fin.preds$c269[fin.preds$c269==1] <- "SUDDEN"
+fin.preds$c269[fin.preds$c269==7] <- "NONE"
+fin.preds$c269 <- as.factor(fin.preds$c269)
+
+fin.preds$c275 <- ifelse(fin.preds$c275 >= 8, NA, fin.preds$c275)
+fin.preds$c275[fin.preds$c275==0] <- "NO"
+fin.preds$c275[fin.preds$c275==1] <- "YES"
+fin.preds$c275 <- as.factor(fin.preds$c275)
+
+fin.preds$c276 <- ifelse(fin.preds$c276 >= 8, NA, fin.preds$c276)
+fin.preds$c276[fin.preds$c276==0] <- "NO"
+fin.preds$c276[fin.preds$c276==1] <- "YES"
+fin.preds$c276 <- as.factor(fin.preds$c276)
+
+fin.preds$c277 <- ifelse(fin.preds$c277 >= 8, NA, fin.preds$c277)
+fin.preds$c277[fin.preds$c277==0] <- "NO"
+fin.preds$c277[fin.preds$c277==1] <- "YES"
+fin.preds$c277 <- as.factor(fin.preds$c277)
+
+fin.preds$c280 <- ifelse(fin.preds$c280 >= 8, NA, fin.preds$c280)
+fin.preds$c280[fin.preds$c280==0] <- "NO"
+fin.preds$c280[fin.preds$c280==1] <- "YES"
+fin.preds$c280 <- as.factor(fin.preds$c280)
+
+fin.preds$c281 <- ifelse(fin.preds$c281 >= 8, NA, fin.preds$c281)
+fin.preds$c281[fin.preds$c281==0] <- "NO"
+fin.preds$c281[fin.preds$c281==1] <- "YES"
+fin.preds$c281 <- as.factor(fin.preds$c281)
+
+fin.preds$c282 <- ifelse(fin.preds$c282 >= 8, NA, fin.preds$c282)
+fin.preds$c282[fin.preds$c282==0] <- "NO"
+fin.preds$c282[fin.preds$c282==1] <- "YES"
+fin.preds$c282 <- as.factor(fin.preds$c282)
+
+fin.preds$c283 <- ifelse(fin.preds$c283 >= 8, NA, fin.preds$c283)
+fin.preds$c283[fin.preds$c283==0] <- "NO"
+fin.preds$c283[fin.preds$c283==1] <- "YES"
+fin.preds$c283 <- as.factor(fin.preds$c283)
+
+fin.preds$c286 <- ifelse(fin.preds$c286 >= 8, NA, fin.preds$c286)
+fin.preds$c286[fin.preds$c286==0] <- "NO"
+fin.preds$c286[fin.preds$c286==1] <- "YES"
+fin.preds$c286 <- as.factor(fin.preds$c286)
+
+fin.preds$c287 <- ifelse(fin.preds$c287 >= 8, NA, fin.preds$c287)
+fin.preds$c287[fin.preds$c287==0] <- "NO"
+fin.preds$c287[fin.preds$c287==1] <- "YES"
+fin.preds$c287 <- as.factor(fin.preds$c287)
+
+fin.preds$c288 <- ifelse(fin.preds$c288 >= 8, NA, fin.preds$c288)
+fin.preds$c288[fin.preds$c288==0] <- "NO"
+fin.preds$c288[fin.preds$c288==1] <- "YES"
+fin.preds$c288 <- as.factor(fin.preds$c288)
+
+fin.preds$c289 <- ifelse(fin.preds$c289 >= 8, NA, fin.preds$c289)
+fin.preds$c289[fin.preds$c289==0] <- "NO"
+fin.preds$c289[fin.preds$c289==1] <- "YES"
+fin.preds$c289 <- as.factor(fin.preds$c289)
+
+fin.preds$c290 <- ifelse(fin.preds$c290 >= 8, NA, fin.preds$c290)
+fin.preds$c290[fin.preds$c290==0] <- "NO"
+fin.preds$c290[fin.preds$c290==1] <- "YES"
+fin.preds$c290 <- as.factor(fin.preds$c290)
+
+fin.preds$c292 <- ifelse(fin.preds$c292 >= 7, NA, fin.preds$c292)
+fin.preds$c292[fin.preds$c292==0] <- "NO"
+fin.preds$c292[fin.preds$c292==1] <- "SOME"
+fin.preds$c292[fin.preds$c292==2] <- "GREAT"
+fin.preds$c292 <- as.factor(fin.preds$c292)
+
+fin.preds$c301 <- ifelse(fin.preds$c301 >= 8, NA, fin.preds$c301)
+fin.preds$c301[fin.preds$c301==0] <- "NO"
+fin.preds$c301[fin.preds$c301==1] <- "ONE"
+fin.preds$c301[fin.preds$c301==2] <- "TWO"
+fin.preds$c301[fin.preds$c301==3] <- "THREE"
+fin.preds$c301 <- as.factor(fin.preds$c301)
+
+fin.preds$c302 <- ifelse(fin.preds$c302 >= 8, NA, fin.preds$c302)
+fin.preds$c302[fin.preds$c302==0] <- "NO"
+fin.preds$c302[fin.preds$c302==1] <- "INFANTILE"
+fin.preds$c302[fin.preds$c302==2] <- "PAST"
+fin.preds$c302[fin.preds$c302==3] <- "CURRENT"
+fin.preds$c302 <- as.factor(fin.preds$c302)
+
+fin.preds$c303 <- ifelse(fin.preds$c303 >= 8, NA, fin.preds$c303)
+fin.preds$c303[fin.preds$c303==0] <- "NO"
+fin.preds$c303[fin.preds$c303==1] <- "YES"
+fin.preds$c303 <- as.factor(fin.preds$c303)
+
+fin.preds$c304 <- ifelse(fin.preds$c304 >= 8, NA, fin.preds$c304)
+fin.preds$c304[fin.preds$c304==0] <- "NO"
+fin.preds$c304[fin.preds$c304==1] <- "YES"
+fin.preds$c304 <- as.factor(fin.preds$c304)
+
+fin.preds$c305 <- ifelse(fin.preds$c305 >= 8, NA, fin.preds$c305)
+fin.preds$c305[fin.preds$c305==0] <- "NO"
+fin.preds$c305[fin.preds$c305==1] <- "YES"
+fin.preds$c305 <- as.factor(fin.preds$c305)
+
+fin.preds$c306 <- ifelse(fin.preds$c306 >= 8, NA, fin.preds$c306)
+fin.preds$c306[fin.preds$c306==0] <- "NO"
+fin.preds$c306[fin.preds$c306==1] <- "YES"
+fin.preds$c306 <- as.factor(fin.preds$c306)
+
+fin.preds$c307 <- ifelse(fin.preds$c307 >= 8, NA, fin.preds$c307)
+fin.preds$c307[fin.preds$c307==0] <- "NO"
+fin.preds$c307[fin.preds$c307==1] <- "TRANQ"
+fin.preds$c307[fin.preds$c307==2] <- "HYP"
+fin.preds$c307[fin.preds$c307==3] <- "BARB"
+fin.preds$c307[fin.preds$c307==4] <- "STIM"
+fin.preds$c307[fin.preds$c307==5] <- "OTHER"
+fin.preds$c307 <- as.factor(fin.preds$c307)
+
+fin.preds$c308 <- ifelse(fin.preds$c308 >= 8, NA, fin.preds$c308)
+fin.preds$c308[fin.preds$c308==0] <- "NO"
+fin.preds$c308[fin.preds$c308==1] <- "YES"
+fin.preds$c308 <- as.factor(fin.preds$c308)
+
+fin.preds$c309 <- ifelse(fin.preds$c309 >= 8, NA, fin.preds$c309)
+fin.preds$c309[fin.preds$c309==0] <- "NO"
+fin.preds$c309[fin.preds$c309 > 0 & fin.preds$c309 <= 6] <- "YES"
+fin.preds$c309 <- as.factor(fin.preds$c309)
+
+fin.preds$c318 <- ifelse(fin.preds$c318>=88,NA,fin.preds$c318)
+fin.preds$c318 <- as.numeric(fin.preds$c318)
+
+fin.preds$c319 <- ifelse(fin.preds$c319>=88,NA,fin.preds$c319)
+fin.preds$c319 <- as.numeric(fin.preds$c319)
+
+fin.preds$c320 <- ifelse(fin.preds$c320>=88,NA,fin.preds$c320)
+fin.preds$c320 <- as.numeric(fin.preds$c320)
+
+fin.preds$c321 <- ifelse(fin.preds$c321>=88,NA,fin.preds$c321)
+fin.preds$c321 <- as.numeric(fin.preds$c321)
+
+fin.preds$painkill <- as.character(fin.preds$painkill)
+fin.preds$painkill[fin.preds$painkill=="8" | fin.preds$painkill=="9"] <- NA
+fin.preds$painkill[fin.preds$painkill=="1"] <- "YES"
+fin.preds$painkill[fin.preds$painkill=="2"] <- "NO"
+fin.preds$painkill <- as.factor(fin.preds$painkill)
+
+
+droppers <- c("c245","c260","c268","c293","c294")
+fin.preds <- fin.preds[,-c(which(colnames(fin.preds) %in% droppers))]
+
+## I separate out caregiver demographics to be included in the analysis of cg traits
+preds.cg<-c("cgsex", "cgage","cgedyrs","cgedlev")
+fin.preds.cg<-fin.preds[,preds.cg]
+fin.preds.patient<-fin.preds[,-c(which(colnames(fin.preds) %in% preds.cg))]
+
+class.order.patient <- unlist(lapply(fin.preds.patient,class))
+numeric.columns.patient <- which(class.order.patient == "numeric")
+factor.columns.patient <- which(class.order.patient != "numeric")
+
+fin.preds.patient_num <- fin.preds.patient[,numeric.columns.patient]
+fin.preds.patient_cat <- fin.preds.patient[,factor.columns.patient]
+
+fin.preds.patient_num.be <- escofier.transform(fin.preds.patient_num)
+
+fin.preds.patient_num.be <- mean.impute(fin.preds.patient_num.be)
+fin.patient.dat <- cbind(fin.preds.patient_num.be,makeNominalData(fin.preds.patient_cat))
+
+```
+For this analysis, a discriminant correspondance analysis is conducted to determine the the frequency of responses to each questionnaire associated with being a community-based vs. institution based patient. By coding each response rather than using the scale as numeric we can examine non-linear effects in the data.
+```{r DICA_predictors, results="hide", echo=F}
+dica.predic.inf.res<-tepDICA.inference.battery(fin.patient.dat,DESIGN = fin.des$DEMENTIA, make_design_nominal = T,graphs=F,test.iters = 500)
+
+dica.pred.bsr<-dica.predic.inf.res$Inference.Data$boot.data$fj.boot.data$tests$boot.ratios
+lv<-1
+sig.bsr<-3
+sig.comm.pred<-dica.pred.bsr[which(dica.pred.bsr[,lv]<=-sig.bsr),lv]
+sig.instit.pred<-dica.pred.bsr[which(dica.pred.bsr[,lv]>=sig.bsr),lv]
 ```
 
-# Conclusions
+This table lists the responses that were significantly related to community-based patients (and the corresponding BootStrap Ratio).
+```{r DICA_res_pred_community, echo=F}
+as.data.frame(sort(sig.comm.pred))
+```
+This table lists the responses that were significantly related to institution-based patients (and the corresponding BootStrap Ratio).
+```{r DICA_res_pred_institu, echo = F}
+as.data.frame(sort(sig.instit.pred, decreasing = T))
+```
+### Summary of Patient Analysis
+In general, the biggest difference between community and institution patients, is that institutionalized patients have much more severe impairment, whereas community patients range from unimpaired to moderately impaired. For example, community patients do not have difficulty with activities of daily living (i.e., dressing, chores,feeding), or issues with general functioning. However, they do show slight impairments in memory.
+
+On the other hand, patients in institutions have much more severe symptoms related to dementia. In general, they are unable to perform activities of daily living, have greater trouble with memory, disinhibition, and judgement. Institution patients are more likely to have 2 or 3 injuries resulting in unconsciousness. Their dementia interferes with their social and work lives, and they are more likely to express depressive symptoms such as suicide.
+
+### Caregiver Analysis - Caregiver traits of Community vs Institution Patients 
+The second analysis examines which caregiver traits are more prevelent for caregivers of community- vs institution-based patients. 
+
+First, the individual outcome questions of interest are isolated. Here we are interested in the 22 question Zarit Burden scale, 20 question CESD (Depression) Scale, and 2 questions on the caregivers's health. The numeric responses are recoded to their corresponding question response. Caregiver demographic variables (originally in the predictor set) are also included here. 
+```{r outcome_qs_cleanip_recode, echo=F,results="hide"}
+###### Individual questions of interest and their coding scheme
+### Zarit questionnaire : 0 = never, 1 = rarely, 2 = sometimes,3 = frequently, 4 = all of the time
+cg.zarit.qs<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened")
+
+## CG CESD questionnaire: #0 = rarely; 1 = some; 2 = occasionally; 3 = most/all time
+cg.cesd.qs<-c("bother","poorapp","shake","mind","depressd","eveffort","failure","fearful","restls", "talkless","lonely","unfriend","cryspell", "feltsad","dislike","getgoing") 
+cg.cesd.qs.reverse<-c("good","hopeful","happy","enjoylif")
+
+## health1: 1 = very good, 2 = pretty good, 3 = not too good, 4 = poor, 5 = very poor
+## health2: 1 = better, 2 = about the same, 3 = worse
+
+### All the individual outcome questions
+outcome.qs<-fin.outs[,c(cg.zarit.qs,cg.cesd.qs,cg.cesd.qs.reverse, "health1","health2")]     
+
+outcome.qs.nom<-outcome.qs
+outcome.qs.nom[,cg.zarit.qs]<-apply(outcome.qs.nom[,cg.zarit.qs],2,function(x) {x[(x==0)] <- "zNEVER"; x})
+outcome.qs.nom[,cg.zarit.qs]<-apply(outcome.qs.nom[,cg.zarit.qs],2,function(x) {x[(x==1)] <- "zRARELY"; x})
+outcome.qs.nom[,cg.zarit.qs]<-apply(outcome.qs.nom[,cg.zarit.qs],2,function(x) {x[(x==2)] <- "zSOMETIMES"; x})
+outcome.qs.nom[,cg.zarit.qs]<-apply(outcome.qs.nom[,cg.zarit.qs],2,function(x) {x[(x==3)] <- "zFREQUENTLY"; x})
+outcome.qs.nom[,cg.zarit.qs]<-apply(outcome.qs.nom[,cg.zarit.qs],2,function(x) {x[(x==4)] <- "zALL.TIME"; x})
+
+outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)]<-apply(outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)],2,function(x) {x[(x==0)] <- "dRARELY"; x})
+outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)]<-apply(outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)],2,function(x) {x[(x==1)] <- "dSOMETIMES"; x})
+outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)]<-apply(outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)],2,function(x) {x[(x==2)] <- "dOCCAS"; x})
+outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)]<-apply(outcome.qs.nom[,c(cg.cesd.qs,cg.cesd.qs.reverse)],2,function(x) {x[(x==3)] <- "dALL.TIME"; x})
+
+outcome.qs.nom$health1[which(outcome.qs.nom$health1==1)]<- "VERY.GOOD"
+outcome.qs.nom$health1[which(outcome.qs.nom$health1==2)]<- "PRETTY.GOOD"
+outcome.qs.nom$health1[which(outcome.qs.nom$health1==3)]<- "NOT.GOOD"
+outcome.qs.nom$health1[which(outcome.qs.nom$health1==4)]<- "POOR"
+outcome.qs.nom$health1[which(outcome.qs.nom$health1==5)]<- "VERY.POOR"
+
+outcome.qs.nom$health2[which(outcome.qs.nom$health2==1)]<- "BETTER"
+outcome.qs.nom$health2[which(outcome.qs.nom$health2==2)]<- "SAME"
+outcome.qs.nom$health2[which(outcome.qs.nom$health2==3)]<- "WORSE"
+
+
+### some additioanl Caregiver traits (from predictor set) are moved to the caregiver set
+## demogrpahic variables originally from the predictor set
+
+class.order.cg <- unlist(lapply(fin.preds.cg,class))
+numeric.columns.cg <- which(class.order.cg == "numeric")
+factor.columns.cg <- which(class.order.cg != "numeric")
+
+fin.preds.cg_num <- fin.preds.cg[,numeric.columns.cg]
+fin.preds.cg_cat <- fin.preds.cg[,factor.columns.cg]
+
+fin.preds.cg_num.be <- escofier.transform(fin.preds.cg_num)
+
+fin.preds.cg_num.be <- mean.impute(fin.preds.cg_num.be)
+fin.cg.dat.demog <- cbind(fin.preds.cg_num.be,makeNominalData(fin.preds.cg_cat))
+
+fin.cg.dat<-merge(fin.cg.dat.demog,makeNominalData(outcome.qs.nom),by='row.names',all.x=T)
+fin.cg.dat<-fin.cg.dat[,-which(names(fin.cg.dat)=="Row.names")]
+
+```
+For this analysis, a discriminant correspondance analysis is conducted to determine the the frequency of responses to each outcome questionnaire associated with being a caregiver of a community-based vs. institution-based patient. By coding each response rather than using the scale as numeric we can examine non-linear effects in the data. NA responses are imputed to the mean via the make_nominal_data flag in tepDICA.
+```{r comm_vs_instit_DICA, results="hide",echo=F}
+dica.out.inf.res<-tepDICA.inference.battery(DATA=fin.cg.dat,DESIGN = fin.des$DEMENTIA, make_design_nominal = T,graphs=F,test.iters = 500)
+dica.out.bsr<-dica.out.inf.res$Inference.Data$boot.data$fj.boot.data$tests$boot.ratios
+lv<-1
+sig.bsr<-3
+sig.comm.outs<-dica.out.bsr[which(dica.out.bsr[,lv]>=sig.bsr),lv]
+sig.instit.outs<-dica.out.bsr[which(dica.out.bsr[,lv]<=-sig.bsr),lv]
+```
+
+This table lists the responses that were significantly related to caregivers of community-based patients (and the corresponding BootStrap Ratio).
+```{r DICA_res_community, echo=F}
+as.data.frame(sort(sig.comm.outs, decreasing = T))
+```
+This table lists the responses that were significantly related to caregivers of institution-based patients (and the corresponding BootStrap Ratio).
+```{r DICA_res_institu, echo = F}
+as.data.frame(sort(sig.instit.outs))
+```
+### Summary of Caregiver Measures Analysis
+Caregivers of community-based patients are more likely to be female and less educated. They report greater frequency of personal burden including a negative impact of caregiving on their social life, sense of privacy, sense of control, and personal time for themselves. This group of caregivers also expresses frustration towards their patient--they report feeling angry at and embarrassed by the patient, and they more frequently feel that the patient asks for too much help and expects too much of them. They also express worry--they report that they are afraid for the patient's future and feel as if they are unable to take care of the patient for much longer, but they are uncertain what to do. Caregivers of community-based patients also express higher frequency of depressive symptoms such as: being unable to shake the blues and feeling as if everything they did was an effort. 
+
+On the other hand, caregivers of institution-based patients are more likely to be male and higher educated. They report that they never or rarely experience these aspects of burden or depression. However, they do express that they frequently feel as though they should be doing more for the patient. 
+
+## General Summary and Recommendations
+These two analyses provide an interesting look at the differences between patients (and their caregivers) in community versus instituation enviroments. Not suprisingly, the institutionalized patients show greater severity of dementia symptoms and are unable to complete normal activities of daily living. However, even though the community-based patients show less severe symptoms, the impact on caregiver outcomes is much greater -- Caregivers of community patients more frequently report personal burden and stress in additon to symptoms of depression. These findings suggest that caregivers of community-based patients may be more at risk for stress related to caregiving burden and depression.
+
+Given that one of the major worries of caregivers is their uncertainty of their ability to care for their community-based patient, possible  interventions could involve community-based support groups for caregivers, which may help to alleviate these concerns.
+
+
+### Analysis of binary depression caregiver variable for predictors
+In order to explore this effect further, an additional analysis was conducted to examine possible correlates of depression in caregivers of community vs. institutionalized patients. 
+
+```{r DICA_res_depression, echo = F, results="hide"}
+# merge all predictor / zarit/health outcome variables for this analysis
+fin.all.preds<-merge(cbind(fin.cg.dat.demog,fin.patient.dat),makeNominalData(outcome.qs.nom[,c(cg.zarit.qs,"health1","health2")]),by='row.names')
+fin.all.preds<-fin.all.preds[,-which(names(fin.all.preds)=="Row.names")]
+
+## create a new design for depression (CESD >=16) and community vs institution
+des.depress<-fin.outs$cesscore
+des.depress[which(fin.outs$cesscore<16)]<-'NORM'
+des.depress[which(fin.outs$cesscore>=16)]<-'DEPRESS'
+des.depress<-as.data.frame(des.depress)
+complete.des.depress<-as.data.frame(des.depress[complete.cases(des.depress),])
+names(complete.des.depress)<-'CESD'
+complete.fin.all.preds<-fin.all.preds[complete.cases(des.depress),]
+complete.des<-as.data.frame(as.data.frame(fin.des$DEMENTIA)[complete.cases(des.depress),])
+names(complete.des)<-'DEMENTIA'
+
+des.depress.dementia<-cbind(complete.des,complete.des.depress)
+des.depress.dementia$DEMENTIA.CESD<-paste0(des.depress.dementia$DEMENTIA, '.',des.depress.dementia$CESD)
+table(des.depress.dementia$DEMENTIA, des.depress.dementia$CESD)
+# run discriminant CA
+dica.depress.inf.res<-tepDICA.inference.battery(DATA=complete.fin.all.preds,DESIGN = des.depress.dementia$DEMENTIA.CESD, make_design_nominal = T,graphs=F,test.iters = 500)
+dica.depress.bsr<-dica.depress.inf.res$Inference.Data$boot.data$fj.boot.data$tests$boot.ratios
+
+fi.means<- dica.depress.inf.res$Fixed.Data$TExPosition.Data$fi
+bootsy<- dica.depress.inf.res$Inference.Data$boot.data$fi.boot.data$boots
+CIs<-bootsy.bars(bootsy,.95)
+
+```
+In this sample, the incidence of depression in caregivers is 17.4% (138 of 794 participants), which is much higher than the national prevelance of 11.3% (http://www.phac-aspc.gc.ca/cd-mc/mi-mm/depression-eng.php). When broken down by caregivers of community vs institution based patients, it's clear that the prevelance of depression is much greater for caregivers of community-based patients--almost 1 in 4 (23.5%) of community caregivers score above the threshold for clinical depression on the CESD.
+```{r depression descrips, echo = F}
+depress.table<-table(des.depress.dementia$DEMENTIA, des.depress.dementia$CESD)
+depress.table
+prop.table(depress.table,1)
+```
+In this analysis, all patient predictors, caregiver demographics, caregiver health, and caregiver Zarit Burden questions are analyzed together to predict depression status (CESD >=16) and patient location (community vs institution). The sample was split into 4 groups: INS.NORM, INS.DEPRESS, COMM.NORM and COMM.DEPRESS, and a discriminant CA was conducted. 4 participants were dropped from this analysis for not having Caregiver CESD scores on record. 
+
+The first latent variable separates community versus instituation patients, regardless of depression status.
+```{r DICA_depression_lv1, echo = F}
+lv<-1
+center.heights<-fi.means[,lv]
+upperz <- CIs$CIs.up[,lv]
+lowerz <- CIs$CIs.lo[,lv]
+par(mar = c(10, 4, 2, 2) + 0.2)
+bars <- barplot(center.heights, ylab='Factor Score + 95% CIs',beside=T, main="LV 1: Institution vs Community, p = .002",las=2,ylim =c(min(lowerz),max(upperz)),cex.names = .75)
+arrows(bars, upperz, bars, lowerz,angle=90, code=3, length=0.07, lwd=.65)
+abline(h=0,lwd=1)
+
+ # negative is institution (norma depressed) vs community (norm/depressed)
+sig.bsr<-3
+sig.all.comm.preds<-dica.depress.bsr[which(dica.depress.bsr[,lv]>=sig.bsr),lv]
+sig.all.instit.preds<-dica.depress.bsr[which(dica.depress.bsr[,lv]<=-sig.bsr),lv]
+```
+
+This table lists the responses that were significantly related to community based-patients (and the corresponding BootStrap Ratio).
+```{r DICA_depression_lv1_pos, echo = F}
+data.frame(sort(sig.all.comm.preds,decreasing = T))
+```
+
+This table lists the responses that were significantly related to institution based-patients (and the corresponding BootStrap Ratio).
+```{r DICA_depression_lv1_neg, echo = F}
+data.frame(sort(sig.all.instit.preds))
+```
+
+The second latent variable separates depressed from normal caregivers, regardless of location of their patient
+```{r DICA_depression_lv2, echo = F}
+lv<-2# negative is depressed (instit & comm), pos is norms (instit & comm)
+center.heights<-fi.means[,lv]
+upperz <- CIs$CIs.up[,lv]
+lowerz <- CIs$CIs.lo[,lv]
+par(mar = c(10, 4, 2, 2) + 0.2)
+bars <- barplot(center.heights, ylab='Factor Score + 95% CIs',beside=T, main="LV 2: Depressed vs Normal, p=.002",las=2,ylim =c(min(lowerz),max(upperz)),cex.names = .75)
+arrows(bars, upperz, bars, lowerz,angle=90, code=3, length=0.07, lwd=.65)
+abline(h=0,lwd=1)
+
+sig.bsr<-3
+sig.all.depressed.preds<-dica.depress.bsr[which(dica.depress.bsr[,lv]<=-sig.bsr),lv]
+sig.all.norms.preds<-dica.depress.bsr[which(dica.depress.bsr[,lv]>=sig.bsr),lv]
+```
+
+This table lists the responses that were significantly related to Depressed Caregivers (and the corresponding BootStrap Ratio).
+```{r DICA_depression_lv2_neg, echo = F}
+data.frame(sort(sig.all.depressed.preds)) #personality, sleep issues, wandering issues, lower education <HS, lower patient education, higher dbdscore
+```
+
+This table lists the responses that were significantly related to Non-Depressed Caregivers (and the corresponding BootStrap Ratio).
+```{r DICA_depression_lv2_pos, echo = F}
+data.frame(sort(sig.all.norms.preds,decreasing = T)) #higher ed (BS, MS), no personality changes, 
+
+```
+
+## Final Conclusions and Recommendations
