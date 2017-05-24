@@ -1,0 +1,125 @@
+---
+title: "IPN Analyses"
+author: "Derek Beaton"
+date: "May 19, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+require(TInPosition)
+require(knitr)
+require(SDMTools)
+knitr::opts_chunk$set(echo = TRUE)
+
+add.alpha <- function(col, alpha=0.65){
+	apply(
+		sapply(col, col2rgb)/255, 
+		2, 
+		function(x){
+			rgb(x[1], x[2], x[3], alpha=alpha)
+		}
+	)  
+}
+
+
+pointsInHull <- function(pnts, points.for.hull, x_axis=1, y_axis=2, percentage=.95){
+	
+	nsim <- nrow(points.for.hull)
+    repeat {
+        hpts <- chull(points.for.hull[, c(x_axis, y_axis)])
+        npts <- nrow(points.for.hull[-hpts, c(x_axis, y_axis)])
+        if ((npts/nsim < percentage) || is.null(npts)) {
+            break
+        }
+        points.for.hull <- points.for.hull[-hpts, ]
+    }
+    hpts <- c(hpts, hpts[1])
+
+	pnts <- pnts[,c(x_axis, y_axis)]
+    poly.pnts <- points.for.hull[hpts,c(x_axis, y_axis)]
+	
+	if (!(is.matrix(pnts) & is.matrix(poly.pnts))) 
+        stop("pnts & poly.pnts must be a 2 column dataframe or matrix")
+    if (!(dim(pnts)[2] == 2 & dim(poly.pnts)[2] == 2)) 
+        stop("pnts & poly.pnts must be a 2 column dataframe or matrix")
+    if (poly.pnts[1, 1] == poly.pnts[nrow(poly.pnts), 1] & poly.pnts[1, 2] == poly.pnts[nrow(poly.pnts), 2]) 
+        poly.pnts = poly.pnts[-1, ]
+    
+    out <- .Call("pip", pnts[, 1], pnts[, 2], nrow(pnts), poly.pnts[,1], poly.pnts[, 2], nrow(poly.pnts), PACKAGE = "SDMTools")
+    names(out) <- rownames(pnts)
+	return(out)	
+}
+
+plot.these <- function(all.points,sig.points,x_axis=1,y_axis=2,xlab="",ylab="",main=""){
+  
+  max.point <- max(abs(all.points))
+  
+  plot(all.points[,c(x_axis,y_axis)],pch=20,col=add.alpha("grey80"),cex=.5,asp=NA,axes=F,xlim=c(-max.point,max.point),ylim=c(-max.point,max.point),xlab=xlab,ylab=ylab,main=main)
+  abline(h=0)
+  abline(v=0)
+  
+  points(sig.points[,c(x_axis,y_axis)],col="mediumorchid4",pch=20,cex=2)
+  text(sig.points[,c(x_axis,y_axis)],rownames(sig.points),col="mediumorchid4",pch=20,pos=3,cex=.7)
+}
+
+load('InferenceOut.RData')
+
+```
+
+# Preliminaries 
+
+This part contains a few notes and blocks of code that will likely go unseen in the PDF but available in the RMarkdown document.
+
+
+# Introduction 
+Some intro stuff and outline of analyses and goals.
+
+# Code & Analyses
+Short description of what the analyses were and found. Mostly just use this section for plotting of significant items. Provide some interpretation.
+
+```{r inf_plots, echo=F}
+
+which.fi.C1 <- which(fi.bsrs$sig.boot.ratios[,1])
+  fi.C1.bsr <- fi.bsrs$boot.ratios[which.fi.C1,1]
+which.fj.C1 <- which(fj.bsrs$sig.boot.ratios[,1])
+  fj.C1.bsr <- fj.bsrs$boot.ratios[which.fj.C1,1]
+
+which.fi.C2 <- which(fi.bsrs$sig.boot.ratios[,2])
+  fi.C2.bsr <- fi.bsrs$boot.ratios[which.fi.C2,2]
+which.fj.C2 <- which(fj.bsrs$sig.boot.ratios[,2])
+  fj.C2.bsr <- fj.bsrs$boot.ratios[which.fj.C2,2]
+
+which.fi.C3 <- which(fi.bsrs$sig.boot.ratios[,3])
+  fi.C3.bsr <- fi.bsrs$boot.ratios[which.fi.C3,3]
+which.fj.C3 <- which(fj.bsrs$sig.boot.ratios[,3])
+  fj.C3.bsr <- fj.bsrs$boot.ratios[which.fj.C3,3]
+
+```
+
+```{r graphs, echo=F, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+  plot(1:length(plsca.res$TExPosition.Data$t),plsca.res$TExPosition.Data$t,type="l",xlab="Components",ylab="Explained Variance")
+  points(1:length(plsca.res$TExPosition.Data$t),plsca.res$TExPosition.Data$t,pch=20)
+  
+  plot.these(plsca.res$TExPosition.Data$fi,plsca.res$TExPosition.Data$fi[which.fi.C1,],xlab="Component 1",ylab="Component 2", main="C1 Sig. Pt")
+  kable(sort(fi.C1.bsr),caption = "Sig. Predictors C1")
+  plot.these(plsca.res$TExPosition.Data$fj,plsca.res$TExPosition.Data$fj[which.fj.C1,],xlab="Component 1",ylab="Component 2", main="C1 Sig. Cg")
+  kable(sort(fj.C1.bsr),caption = "Sig. Outcomes C1")
+
+  plot.these(plsca.res$TExPosition.Data$fi,plsca.res$TExPosition.Data$fi[which.fi.C2,],xlab="Component 1",ylab="Component 2", main="C2 Sig. Pt")
+  kable(sort(fi.C2.bsr,decreasing = T),caption = "Sig. Predictors C2")
+  plot.these(plsca.res$TExPosition.Data$fj,plsca.res$TExPosition.Data$fj[which.fj.C2,],xlab="Component 1",ylab="Component 2", main="C2 Sig. Cg")
+  kable(sort(fj.C2.bsr,decreasing = T),caption = "Sig. Outcomes C2")
+  
+    
+  plot.these(plsca.res$TExPosition.Data$fi,plsca.res$TExPosition.Data$fi[which.fi.C3,],xlab="Component 1",ylab="Component 3", main="C3 Sig. Pt",x_axis=1,y_axis=3)
+  kable(sort(fi.C3.bsr,decreasing = T),caption = "Sig. Predictors C3")
+  plot.these(plsca.res$TExPosition.Data$fj,plsca.res$TExPosition.Data$fj[which.fj.C3,],xlab="Component 1",ylab="Component 3", main="C3 Sig. Cg",x_axis=1,y_axis=3)
+  kable(sort(fj.C3.bsr,decreasing = T),caption = "Sig. Outcomes C3")
+
+```
+
+
+# Conclusions
+Policy-like statements.
