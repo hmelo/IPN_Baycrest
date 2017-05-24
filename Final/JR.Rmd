@@ -84,14 +84,14 @@ load('fin.outs.rda')
 
 
 ## Introduction 
-These analyses examine differences in caregivers of community- vs institution-based patients as well as their caregivers.
+Caregivers of dementia patients are often described as the "hidden victims" of the disease  (Zarit, Orr & Zarit, 1985) --  They are more likely to be depressed and to be in worse health. Here we examine different traits related to two population of demented individuals -- those living in the community and those living in institutions --  in addition to traits of the informal caregivers of these patients (with a specific focus on depressive symptoms)
 
 ## Code & Analyses
 
 ### Patient Analysis - Traits of Community vs Institution based Patients 
 This first analysis examines which patient traits are more prevelent in community vs institution based patients. 
 
-Following code from Derek, the predictor variables are recoded according to their corresponding question response. A responses are imputed to the mean via the make_nominal_data function.
+Following code from Derek, the predictor variables are recoded according to their corresponding question response. NA responses are imputed to the mean via the makeNominalData function.
 ```{r preliminary_clean_up_predictors, echo=F,results="hide"}
 ### Recoding of predictors from Derek
 fin.preds$studysex <- ifelse(fin.preds$studysex==1,"MALE","FEMALE")
@@ -590,7 +590,7 @@ fin.preds.patient_num.be <- mean.impute(fin.preds.patient_num.be)
 fin.patient.dat <- cbind(fin.preds.patient_num.be,makeNominalData(fin.preds.patient_cat))
 
 ```
-For this analysis, a discriminant correspondance analysis is conducted to determine the the frequency of responses to each questionnaire associated with being a community-based vs. institution based patient. By coding each response rather than using the scale as numeric we can examine non-linear effects in the data.
+For this first analysis, a discriminant correspondance analysis is conducted to determine the the frequency of responses to each questionnaire associated with being a community based vs. institution based patient. By coding each response rather than using the scale as numeric we can examine non-linear effects in the data.
 ```{r DICA_predictors, results="hide", echo=F}
 dica.predic.inf.res<-tepDICA.inference.battery(fin.patient.dat,DESIGN = fin.des$DEMENTIA, make_design_nominal = T,graphs=F,test.iters = 500)
 
@@ -601,11 +601,11 @@ sig.comm.pred<-dica.pred.bsr[which(dica.pred.bsr[,lv]<=-sig.bsr),lv]
 sig.instit.pred<-dica.pred.bsr[which(dica.pred.bsr[,lv]>=sig.bsr),lv]
 ```
 
-This table lists the responses that were significantly related to community-based patients (and the corresponding BootStrap Ratio).
+This table lists the responses that were significantly related to community based patients (and the corresponding BootStrap Ratio).
 ```{r DICA_res_pred_community, echo=F}
 as.data.frame(sort(sig.comm.pred))
 ```
-This table lists the responses that were significantly related to institution-based patients (and the corresponding BootStrap Ratio).
+This table lists the responses that were significantly related to institution based patients (and the corresponding BootStrap Ratio).
 ```{r DICA_res_pred_institu, echo = F}
 as.data.frame(sort(sig.instit.pred, decreasing = T))
 ```
@@ -615,7 +615,7 @@ In general, the biggest difference between community and institution patients, i
 On the other hand, patients in institutions have much more severe symptoms related to dementia. In general, they are unable to perform activities of daily living, have greater trouble with memory, disinhibition, and judgement. Institution patients are more likely to have 2 or 3 injuries resulting in unconsciousness. Their dementia interferes with their social and work lives, and they are more likely to express depressive symptoms such as suicide.
 
 ### Caregiver Analysis - Caregiver traits of Community vs Institution Patients 
-The second analysis examines which caregiver traits are more prevelent for caregivers of community- vs institution-based patients. 
+The second analysis examines which caregiver traits are more prevelent for caregivers of community vs institution based patients. 
 
 First, the individual outcome questions of interest are isolated. Here we are interested in the 22 question Zarit Burden scale, 20 question CESD (Depression) Scale, and 2 questions on the caregivers's health. The numeric responses are recoded to their corresponding question response. Caregiver demographic variables (originally in the predictor set) are also included here. 
 ```{r outcome_qs_cleanip_recode, echo=F,results="hide"}
@@ -675,7 +675,7 @@ fin.cg.dat<-merge(fin.cg.dat.demog,makeNominalData(outcome.qs.nom),by='row.names
 fin.cg.dat<-fin.cg.dat[,-which(names(fin.cg.dat)=="Row.names")]
 
 ```
-For this analysis, a discriminant correspondance analysis is conducted to determine the the frequency of responses to each outcome questionnaire associated with being a caregiver of a community-based vs. institution-based patient. By coding each response rather than using the scale as numeric we can examine non-linear effects in the data. NA responses are imputed to the mean via the make_nominal_data flag in tepDICA.
+For this analysis, a discriminant correspondance analysis is conducted to determine the the frequency of responses to each outcome questionnaire associated with being a caregiver of a community based vs. institution based patient. By coding each response rather than using the scale as numeric we can examine non-linear effects in the data. NA responses are imputed to the mean via the make_nominal_data flag in tepDICA.
 ```{r comm_vs_instit_DICA, results="hide",echo=F}
 dica.out.inf.res<-tepDICA.inference.battery(DATA=fin.cg.dat,DESIGN = fin.des$DEMENTIA, make_design_nominal = T,graphs=F,test.iters = 500)
 dica.out.bsr<-dica.out.inf.res$Inference.Data$boot.data$fj.boot.data$tests$boot.ratios
@@ -698,8 +698,8 @@ Caregivers of community-based patients are more likely to be female and less edu
 
 On the other hand, caregivers of institution-based patients are more likely to be male and higher educated. They report that they never or rarely experience these aspects of burden or depression. However, they do express that they frequently feel as though they should be doing more for the patient. 
 
-## General Summary and Recommendations
-These two analyses provide an interesting look at the differences between patients (and their caregivers) in community versus instituation enviroments. Not suprisingly, the institutionalized patients show greater severity of dementia symptoms and are unable to complete normal activities of daily living. However, even though the community-based patients show less severe symptoms, the impact on caregiver outcomes is much greater -- Caregivers of community patients more frequently report personal burden and stress in additon to symptoms of depression. These findings suggest that caregivers of community-based patients may be more at risk for stress related to caregiving burden and depression.
+## Summary and Recommendations
+These two analyses provide an interesting look at the differences between patients (and their caregivers) in community versus instituation enviroments. Not suprisingly, the institutionalized patients show greater severity of dementia symptoms and are unable to complete normal activities of daily living. However, even though the community based patients show less severe symptoms, the impact on caregiver outcomes is much greater -- Caregivers of community patients more frequently report personal burden and stress in addition to symptoms of depression. These findings suggest that caregivers of community-based patients may be more at risk for stress related to caregiving burden and depression.
 
 Given that one of the major worries of caregivers is their uncertainty of their ability to care for their community-based patient, possible  interventions could involve community-based support groups for caregivers, which may help to alleviate these concerns.
 
@@ -725,7 +725,7 @@ names(complete.des)<-'DEMENTIA'
 
 des.depress.dementia<-cbind(complete.des,complete.des.depress)
 des.depress.dementia$DEMENTIA.CESD<-paste0(des.depress.dementia$DEMENTIA, '.',des.depress.dementia$CESD)
-table(des.depress.dementia$DEMENTIA, des.depress.dementia$CESD)
+#table(des.depress.dementia$DEMENTIA, des.depress.dementia$CESD)
 # run discriminant CA
 dica.depress.inf.res<-tepDICA.inference.battery(DATA=complete.fin.all.preds,DESIGN = des.depress.dementia$DEMENTIA.CESD, make_design_nominal = T,graphs=F,test.iters = 500)
 dica.depress.bsr<-dica.depress.inf.res$Inference.Data$boot.data$fj.boot.data$tests$boot.ratios
@@ -735,13 +735,23 @@ bootsy<- dica.depress.inf.res$Inference.Data$boot.data$fi.boot.data$boots
 CIs<-bootsy.bars(bootsy,.95)
 
 ```
-In this sample, the incidence of depression in caregivers is 17.4% (138 of 794 participants), which is much higher than the national prevelance of 11.3% (http://www.phac-aspc.gc.ca/cd-mc/mi-mm/depression-eng.php). When broken down by caregivers of community vs institution based patients, it's clear that the prevelance of depression is much greater for caregivers of community-based patients--almost 1 in 4 (23.5%) of community caregivers score above the threshold for clinical depression on the CESD.
+In this sample, the incidence of depression (measured by CESD >=16) in caregivers is 17.4% (138 of 794 participants), which is much higher than the national prevelance of 11.3% (http://www.phac-aspc.gc.ca/cd-mc/mi-mm/depression-eng.php). When broken down by caregivers of community vs institution based patients, it's clear that the prevelance of depression is much greater for caregivers of community based patients--almost 1 in 4 (23.5%) of community caregivers score above the threshold for clinical depression on the CESD.
 ```{r depression descrips, echo = F}
 depress.table<-table(des.depress.dementia$DEMENTIA, des.depress.dementia$CESD)
 depress.table
 prop.table(depress.table,1)
 ```
-In this analysis, all patient predictors, caregiver demographics, caregiver health, and caregiver Zarit Burden questions are analyzed together to predict depression status (CESD >=16) and patient location (community vs institution). The sample was split into 4 groups: INS.NORM, INS.DEPRESS, COMM.NORM and COMM.DEPRESS, and a discriminant CA was conducted. 4 participants were dropped from this analysis for not having Caregiver CESD scores on record. 
+In this final analysis, all patient predictors, caregiver demographics, caregiver health, and caregiver Zarit Burden questions are analyzed together to predict depression status (CESD >=16) and patient location (community vs institution). The sample was split into 4 groups: INS.NORM, INS.DEPRESS, COMM.NORM and COMM.DEPRESS, and a discriminant correspondance analysis was conducted. 4 participants were dropped from this analysis for not having Caregiver CESD scores on record. 
+
+The overall model was significant, and the four groups were classified well above chance based on the patient and caregiver data.
+```{r DICA_depression_overall, echo = F}
+chance.acc<-(71/794)^2 + (67/794)^2 + (231/794)^2 + (425/794)^2
+print(paste('Chance Accuracy= ', round(chance.acc*100,2),'%'))
+model.acc<-dica.depress.inf.res$Inference.Data$loo.data$loo.acc
+print(paste('Model Accuracy= ', round(model.acc*100,2),'%'))
+print(paste('Model R2= ', round(dica.depress.inf.res$Inference.Data$r2$r2,2)))
+```
+
 
 The first latent variable separates community versus instituation patients, regardless of depression status.
 ```{r DICA_depression_lv1, echo = F}
@@ -770,6 +780,8 @@ This table lists the responses that were significantly related to institution ba
 data.frame(sort(sig.all.instit.preds))
 ```
 
+As seen in the prior two analyses, the first latent variable shows that the greatest differences between community and institution based patients are severity of symptoms and difficulty--specifically, activities of daily living are more imparied in institutionalized patients. And as in the prior analysis, caregivers of community-based patients are more likely to express greater burden. This latent variable replicates the findings from the prior two analyses
+
 The second latent variable separates depressed from normal caregivers, regardless of location of their patient
 ```{r DICA_depression_lv2, echo = F}
 lv<-2# negative is depressed (instit & comm), pos is norms (instit & comm)
@@ -797,4 +809,40 @@ data.frame(sort(sig.all.norms.preds,decreasing = T)) #higher ed (BS, MS), no per
 
 ```
 
-## Final Conclusions and Recommendations
+In latent variable 2 we see that caregivers with depression (across both community and institution patients), report very poor health that is worse than it was a year ago, and that they feel their health has suffered because of their caregiving obligations. Overall, Depressed Caregivers report a higher frequency of burden, both personally and socially; however Depressed Caregivers also feel as if they should still be doing more for their partient. They are also generally less educated (with less than a high school degree). The patients they care for are also likely to be more impaired, exhibit extreme personality changes, have difficulties sleeping, and be more prone to wandering
+
+Finally the third latent variable describes an interaction between depression status and patient location. 
+
+```{r DICA_depression_lv3, echo = F}
+lv<-3# negative is depressed (instit & comm), pos is norms (instit & comm)
+center.heights<-fi.means[,lv]
+upperz <- CIs$CIs.up[,lv]
+lowerz <- CIs$CIs.lo[,lv]
+par(mar = c(10, 4, 2, 2) + 0.2)
+bars <- barplot(center.heights, ylab='Factor Score + 95% CIs',beside=T, main="LV 3: Comm. Depressed vs Instit. Depressed, p=.002",las=2,ylim =c(min(lowerz),max(upperz)),cex.names = .75)
+arrows(bars, upperz, bars, lowerz,angle=90, code=3, length=0.07, lwd=.65)
+abline(h=0,lwd=1)
+
+sig.bsr<-3
+sig.all.comm.depressed.preds<-dica.depress.bsr[which(dica.depress.bsr[,lv]<=-sig.bsr),lv]
+sig.all.inst.depressed.preds<-dica.depress.bsr[which(dica.depress.bsr[,lv]>=sig.bsr),lv]
+```
+
+This table lists the responses that were significantly related to Depressed Community Caregivers (and the corresponding BootStrap Ratio).
+```{r DICA_depression_lv3_neg, echo = F}
+data.frame(sort(sig.all.comm.depressed.preds))
+```
+This table lists the responses that were significantly related to Depressed Institution Caregivers (and the corresponding BootStrap Ratio).
+```{r DICA_depression_lv3_pos, echo = F}
+data.frame(sort(sig.all.inst.depressed.preds, decreasing = T))
+```
+
+In latent variable 3 we see that Caregivers of community-based patients are more likely to have depression if their patient has had two or three injuries resulting in unconsciousness, is incontinent, and is older. Depressed community caregivers also express feelings of anger, fear that they are unable to care for the patient, and isolation from their friends.
+
+
+On the otherhand, Caregivers of institution-based patients are more likely to have depression if their patient is younger and in better health. However, these findngs are much weaker (BSRs < 3.5 which p~=.0005)
+
+## Summary and Recommendations
+This secondary analysis confirms the findings in the first two analyses in addition to extending them to better understand correlates of depression in caregivers. Specifically, depressed caregivers are more likely to be less educated and to be caring for patients with greater symptoms of personality changes, wandering, and sleep distrubance. Importantly, Depressed Caregivers report that their overall health is poor and even worse than it was a year ago, and this is potentially due to caregiving responsibilities. Given that depression in caregivers (regardless of patient location) is linked to reports of worse health, this group is an important target for interventions to reduce caregiver burden thereby increasing population health and wellness and reducing burden on the health care system.
+
+Finally, the third latent variable isolated measures specific to depressed caregivers of community-based patients. Specifically, this group of caregivers feels angry, isolated from friends, and unable to care for their patients. Targeting this group by increasing community resources and support groups may help alleviate the symptoms of depression.
