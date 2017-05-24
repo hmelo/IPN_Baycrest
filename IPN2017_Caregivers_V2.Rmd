@@ -2,10 +2,12 @@
 title: "Caregiver burden data preparation"
 author: "Hans, Jenny, and Derek"
 date: "May 14, 2017"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup, echo=F}
 require(ExPosition)
 require(knitr)
 knitr::opts_chunk$set(echo = TRUE)
@@ -14,8 +16,51 @@ rinline <- function(code) {
   sprintf('``` %s ```', code)
 }
 
+check.drop.missingness <- function(data.in,col.freq=.1,row.freq=.1,iters=Inf){
+	
+	counter <- 1
+	keepLooping <- T
+	
+	while( keepLooping ){
+	
+		##these two things need to be done over and over...
+		col.missing <- colSums(is.na(data.in)) / nrow(data.in)
+		col.droppers <- which( col.missing >= col.freq )
+		if( length(col.droppers) > 0 ){
+			data.in <- data.in[,-c(col.droppers)]
+		}
+		
+		row.missing <- rowSums(is.na(data.in)) / ncol(data.in)
+		row.droppers <- which( row.missing >= row.freq )
+		if( length(row.droppers) > 0 ){
+			data.in <- data.in[-c(row.droppers),]
+		}		
+		
+		print( paste0("Iter: ", counter) )
+		counter <- counter + 1		
+				
+		if( length(col.droppers) == 0 & length(row.droppers) == 0 ){
+			print('Missingness acceptable: Stopping.')
+			keepLooping <- F
+		}
+
+	
+		if(counter > iters){	## prevents us from possibly eliminating the entire data set...
+			print('Maximum iterations: Stopping')
+			keepLooping <- F
+		}	
+	
+	}
+
+	return( list(data.out=data.in,final.col.missing=colSums(is.na(data.in)) / nrow(data.in),final.row.missing=rowSums(is.na(data.in)) / ncol(data.in)) ) 
+	
+}
 
 ```
+
+# This file will be deprecated after Friday May 19th.
+
+This file was only for us to get our data up and running with some simple recoding and references. Once the final data sets are generated from here, do not use this file, intead use the respective RMarkdown files for your project.
 
 
 # Overview
@@ -266,31 +311,156 @@ We now have a pseudo-design matrix to identify observation disorder classificati
   cg.felt <- c("bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","cesscore")
   
   
-  targeted.predictors <- CSHA.1991.zarit_disorders[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+  targeted.predictors <- CSHA.1991.zarit_disorders[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery, "dbdscore", "adlrate")]
   
-  full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych)]  
+  full.predictors <- CSHA.1991.zarit_disorders[,c("CASEID",demographics,famhistory,cg.demographics,languages,health.drugs,substances,head.inj,cognition,beh.disturb,depress,dementia,alz,neuropsych,"dbdscore", "adlrate")]  
   
-  outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
+  full.outcomes <- CSHA.1991.zarit_disorders[,c("CASEID",cg.unpaid,cg.felt)]
   
   dim(targeted.predictors)
   dim(full.predictors)
-  dim(outcomes)
+  dim(full.outcomes) # we may want to reduce it a bit.
+```
+
+```{r reduced_recode}
+#"studyage","clinage"
+# "eduyear","edulevel"
+# "region"
+# "wbocc"
+# "cgsex"
+# "cgage"
+# "cgedyrs","cgedlev"
+# "mmms"
+#beh.disturb
+#np.battery
+
+
+final.predictor_demographics <- c("studysex", "studyage","clinage","eduyear","edulevel","region","wbocc","cgsex","cgage","cgedyrs","cgedlev")
+
+final.predictor.set <- c(final.predictor_demographics,beh.disturb,np.battery)
+
+final.predictors <- targeted.predictors[,final.predictor.set]
+rownames(final.predictors) <- targeted.predictors[,"CASEID"]
+
+## maybe not
+#"langabil"
+
+## start recoding
+#final.predictors[,"sex"]
+
+final.predictors$studysex <- ifelse(final.predictors$studysex==1,"MALE","FEMALE")
+  final.predictors$studysex <- as.factor(final.predictors$studysex)
+  
+final.predictors$eduyear <- ifelse(final.predictors$eduyear>=77,NA,final.predictors$eduyear)
+
+final.predictors$edulevel <- ifelse(final.predictors$edulevel>=77,NA,final.predictors$edulevel)
+  
+final.predictors$edulevel[final.predictors$edulevel==1 | final.predictors$edulevel==2 | final.predictors$edulevel==3 | final.predictors$edulevel==4] <- "<HS"
+
+  final.predictors$edulevel[final.predictors$edulevel==5] <- "HS"
+  
+  final.predictors$edulevel[final.predictors$edulevel==6 | final.predictors$edulevel==7 | final.predictors$edulevel==8] <- "<=BACHELORS"
+  
+  final.predictors$edulevel[final.predictors$edulevel==9] <- "BACHELORS"
+  final.predictors$edulevel[final.predictors$edulevel==10] <- "MASTERS"  
+  final.predictors$edulevel[final.predictors$edulevel==11] <- "PHD"    
+  final.predictors$edulevel[final.predictors$edulevel==12] <- "OTHER"    
+  
+  final.predictors$edulevel <- as.factor(final.predictors$edulevel)
   
   
+  final.predictors$region[final.predictors$region==9] <- NA
+  final.predictors$region[final.predictors$region==1] <- "RURAL"
+  final.predictors$region[final.predictors$region==2] <- "URBAN"  
+  
+  final.predictors$region <- as.factor(final.predictors$region)
+  
+  final.predictors$wbocc[final.predictors$wbocc>=8] <- NA
+  final.predictors$wbocc[final.predictors$wbocc==1] <- "LABORER"
+  final.predictors$wbocc[final.predictors$wbocc==2] <- "SERVICE"
+  final.predictors$wbocc[final.predictors$wbocc==3] <- "NOT LABOR FORCE"
+  final.predictors$wbocc[final.predictors$wbocc==4] <- "CRAFT"    
+  final.predictors$wbocc[final.predictors$wbocc==5] <- "MANAGER/OFFICIAL"
+  final.predictors$wbocc[final.predictors$wbocc==6] <- "PROFESSIONAL"
+  
+  final.predictors$wbocc <- as.factor(final.predictors$wbocc)
+  
+  final.predictors$cgsex <- ifelse(final.predictors$cgsex==1,"MALE","FEMALE")
+  
+  final.predictors$cgsex <- as.factor(final.predictors$cgsex)
+  
+  final.predictors$cgage <- ifelse(final.predictors$cgage==999,NA,final.predictors$cgage)
+  
+  final.predictors$cgedyrs <- ifelse(final.predictors$cgedyrs>=88,NA,final.predictors$cgedyrs)
+
+final.predictors$cgedlev <- ifelse(final.predictors$cgedlev>=77,NA,final.predictors$cgedlev)
+
+final.predictors$cgedlev[final.predictors$cgedlev==1 | final.predictors$cgedlev==2 | final.predictors$cgedlev==3 | final.predictors$cgedlev==4] <- "<HS"
+
+final.predictors$cgedlev[final.predictors$cgedlev==5] <- "HS"
+
+final.predictors$cgedlev[final.predictors$cgedlev==6 | final.predictors$cgedlev==7 | final.predictors$cgedlev==8] <- "<=BACHELORS"
+
+final.predictors$cgedlev[final.predictors$cgedlev==9] <- "BACHELORS"
+final.predictors$cgedlev[final.predictors$cgedlev==10] <- "MASTERS"  
+final.predictors$cgedlev[final.predictors$cgedlev==11] <- "PHD"    
+final.predictors$cgedlev[final.predictors$cgedlev==12] <- "OTHER"  
+
+final.predictors$cgedlev <- as.factor(final.predictors$cgedlev)
+
+  
+final.predictors$apathy <- ifelse(final.predictors$apathy >= 5, NA, final.predictors$apathy)
+final.predictors$apathy[final.predictors$apathy==1] <- "YES"
+final.predictors$apathy[final.predictors$apathy==2] <- "MAYBE"
+final.predictors$apathy[final.predictors$apathy==3] <- "NO"
+final.predictors$apathy[final.predictors$apathy==4] <- "NOT_RELEVANT"
+final.predictors$apathy <- as.factor(final.predictors$apathy)
+
+final.predictors$wander <- ifelse(final.predictors$wander >= 5, NA, final.predictors$wander)
+final.predictors$wander[final.predictors$wander==1] <- "YES"
+final.predictors$wander[final.predictors$wander==2] <- "MAYBE"
+final.predictors$wander[final.predictors$wander==3] <- "NO"
+final.predictors$wander[final.predictors$wander==4] <- "NOT_RELEVANT"
+final.predictors$wander <- as.factor(final.predictors$wander)
+
+final.predictors$violenc <- ifelse(final.predictors$violenc >= 5, NA, final.predictors$violenc)
+final.predictors$violenc[final.predictors$violenc==1] <- "YES"
+final.predictors$violenc[final.predictors$violenc==2] <- "MAYBE"
+final.predictors$violenc[final.predictors$violenc==3] <- "NO"
+final.predictors$violenc[final.predictors$violenc==4] <- "NOT_RELEVANT"
+final.predictors$violenc <- as.factor(final.predictors$violenc)
+
+final.predictors$disinhi <- ifelse(final.predictors$disinhi >= 5, NA, final.predictors$disinhi)
+final.predictors$disinhi[final.predictors$disinhi==1] <- "YES"
+final.predictors$disinhi[final.predictors$disinhi==2] <- "MAYBE"
+final.predictors$disinhi[final.predictors$disinhi==3] <- "NO"
+final.predictors$disinhi[final.predictors$disinhi==4] <- "NOT_RELEVANT"
+final.predictors$disinhi <- as.factor(final.predictors$disinhi)
+
+final.predictors$otherbe <- ifelse(final.predictors$otherbe >= 5, NA, final.predictors$otherbe)
+final.predictors$otherbe[final.predictors$otherbe==1] <- "YES"
+final.predictors$otherbe[final.predictors$otherbe==2] <- "MAYBE"
+final.predictors$otherbe[final.predictors$otherbe==3] <- "NO"
+final.predictors$otherbe[final.predictors$otherbe==4] <- "NOT_RELEVANT"
+final.predictors$otherbe <- as.factor(final.predictors$otherbe)
+
+## pretty clear by here that edulevel, eduyear, region, wbocc all have too high a missing level and must be excluded from primary analyses.
+
 ```
 
 
-For our project we should begin with just the two sets of variables identified as `target.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
+
+For our project we should begin with just the two sets of variables identified as `final.predictors` and `outcomes`. At this point we have some re-coding to do to convert missing and NA codes, and to convert YES/NO responses or scales to a more coherent format.
 
 ```{r recoding missingness, tidy=TRUE, tidy.opts=list(width.cutoff=55)}
 ## Recoding Missing Values with NA
 ## Predictor Variables (full set)
 
 ## Variables with missing == 7 | 8 | 9
-vars.missing.x<- c("region","race","wbocc","working","institut","cgsex","langabil","apathy","wander","violenc","disinhi","otherbe","neurdone","languagn","occup","difficul","othrcomn","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","tokencol","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","daily","severity","shrtlosn","longlosn","clanguag","c235","c236a","c238","c239","c240","c241","c242","c243","c244","c246","c247","c248","c249","c250","c251","c253","c254","c255","c256","c257","c258","c259","c261","c262","c263","c264","c265","c266","c267","c269","c270","c271","c272","c273","c275","c276","c277","c279","c280","c281","c282","c283","c285","c286","c287","c288","c289","c290","c292","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310",dementia,alz,"twin","samesex","identic","familyhs",languages,"thycond","attack","oheart","leukemia","cancer","proxdiab","drug",substances,"consloss",depress)
+vars.missing.x<- c("region","race","wbocc","working","institut","cgsex","langabil","apathy","wander","violenc","disinhi","otherbe","neurdone","languagn","occup","difficul","othrcomn","clinic","training","experien","coopern","facility","fatigabi","inattn","affectn","articul","tension","appearn","reaction","effort","express","memoryn","restless","insight","gaitn","agitat","persever","impulsiv","socialn","tangent","comprehe","confusi","latency","rulev","tolerate","visionn","hearingn","physical","gaitdiso","tremdiso","dyskdiso","psycdiso","slowdiso","hearaid","glasses","wheel","wechsler","tokencol","popsize","nshorter","nlongter","nverbal","njudgeme","naphasia","napraxia","nagnosia","nconstru","ndisturb","delirium","majordep","diagdeme","profile","corticr","corticl","subcort","daily","severity","shrtlosn","longlosn","clanguag","c235","c236a","c238","c239","c240","c241","c242","c243","c244","c246","c247","c248","c249","c250","c251","c253","c254","c255","c256","c257","c258","c259","c261","c262","c263","c264","c265","c266","c267","c269","c270","c271","c272","c273","c275","c276","c277","c279","c280","c281","c282","c283","c285","c286","c287","c288","c289","c290","c292","c295","c296","c297","c298","c299","c300","c301","c302","c303","c304","c305","c306","c307","c308","c309","c310",dementia,alz,"twin","samesex","identic","familyhs",languages,"thycond","attack","oheart","leukemia","cancer","proxdiab","drug",substances,"consloss",depress,"adlrate")
 
  ## Variables with missing == 66 | 77 | 88 | 98 | 99
-vars.missing.xx<-c("studyed","eduyear","edulevel","ethnic1","ethnic2","relat","cgeth1","cgeth2","cgedyrs","cgedlev","materlan","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","waisbloc","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","c253am","c253bm","c311","c312","c313","c314","c316","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3")
+vars.missing.xx<-c("studyed","eduyear","edulevel","ethnic1","ethnic2","relat","cgeth1","cgeth2","cgedyrs","cgedlev","materlan","buschfr1","buschcr1","buschtr1","buschfr2","buschcr2","buschtr2","buschfr3","buschcr3","buschtr3","buschfr","buschcr","buschtr","delaytim","reya1","reya2","reya3","reya4","reya5","reya6","reyb1","trueposi","truenega","correct","benmirro","digitspa","lag1","lag2","waisimil","waisjudg","tokentes","verbal","animal","buschke","visualn","waisbloc","cnocoglo","ccogloss","cad","cvasdem","cother","cunclass","c253am","c253bm","c311","c312","c313","c314","c316","c318","c319","c320","c321","c322","c323","c324","c325","c326","c327","c328","c329","c330","c331","c332","c333","alz1","alz2","alz3","sen1","sen2","sen3","par1","par2","par3","dbdscore")
 
 ## Variables with missing == 777 | 888 | 996| 997| 998 | 999 <- some of these varaibles have legit scores of 666 hence the separate coding
 vars.missing.xxx<-c("cgage","mmms","score3ms","psyid","ndiag","cintid","digit","c245","c252","c253ay","c253by","c260","c268", "c274","c278","c284","c286a","c287a", "c291","c293","c294","c315","c317","height","consage")
@@ -329,25 +499,25 @@ full.predictors.NAs[,vars.missing.666]<-apply(full.predictors.NAs[,vars.missing.
 full.predictors.NAs[,vars.missing.9.only]<-apply(full.predictors.NAs[,vars.missing.9.only],2,function(x) {x[(x==9)] <- NA; x})
 full.predictors.NAs[,vars.missing80plus]<-apply(full.predictors.NAs[,vars.missing80plus],2,function(x) {x[(x>80)] <- NA; x})
 
-targeted.predictors.NAs <- full.predictors.NAs[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery)]
+targeted.predictors.NAs <- full.predictors.NAs[,c("CASEID", demographics, cg.demographics, cognition, beh.disturb, np.battery,"dbdscore","adlrate")]
 #summary(targeted.predictors.NAs)  
 summary(full.predictors.NAs)  
 
 ### Recoding Outcome variables
 
 ## Variables with missing == 7 | 8 | 9
-out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing")
+out.missing.x<-c("askhelp","notime","feelstre","feelemba","feelangr","affects","afraid","dependen","strained","suffered","privacy","soclife","friends","expect","expenses","unable","lostctrl","leave","uncertai","doing","better","burdened","bother","poorapp","shake","good","mind","depressd","eveffort","hopeful","failure","fearful","restls","happy","talkless","lonely","unfriend","enjoylif","cryspell","feltsad","dislike","getgoing","health1", "health2")
 
 ## Variables with missing == 99
 out.missing.xx<-c("zarscore","cesscore")
 
 ###
-outcomes.NAs<-outcomes
+full.outcomes.NAs<-full.outcomes
 
-outcomes.NAs[,out.missing.x]<-apply(outcomes.NAs[,out.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
-outcomes.NAs[,out.missing.xx]<-apply(outcomes.NAs[,out.missing.xx],2,function(x) {x[(x==99)] <- NA; x})
+full.outcomes.NAs[,out.missing.x]<-apply(full.outcomes.NAs[,out.missing.x],2,function(x) {x[(x==7 | x==8 | x==9)] <- NA; x})
+full.outcomes.NAs[,out.missing.xx]<-apply(full.outcomes.NAs[,out.missing.xx],2,function(x) {x[(x==99)] <- NA; x})
 
-summary(outcomes.NAs)
+summary(full.outcomes.NAs)
 ```
 
 Recoding notes and things to be mindful of:
@@ -360,7 +530,114 @@ Recoding notes and things to be mindful of:
 
 
 
+We need to work from `full.outcomes.NAs` and `full.predictors.NAs`
+
+
+```{r missingness}
+  outcome.missing.clean.10 <- check.drop.missingness(full.outcomes.NAs,col.freq=.1,row.freq=.1,iters=Inf)
+  predictors.missing.clean.10 <- check.drop.missingness(full.predictors.NAs,col.freq=.1,row.freq=.1,iters=Inf)
+  
+  outcome.missing.clean.20 <- check.drop.missingness(full.outcomes.NAs,col.freq=.2,row.freq=.2,iters=Inf)
+  predictors.missing.clean.20 <- check.drop.missingness(full.predictors.NAs,col.freq=.2,row.freq=.2,iters=Inf)  
+  
+  
+  outcome.missing.clean.25.25 <- check.drop.missingness(full.outcomes.NAs,col.freq=.25,row.freq=.25,iters=Inf)  
+  predictors.missing.clean.25.25 <- check.drop.missingness(full.predictors.NAs,col.freq=.25,row.freq=.25,iters=Inf)
+  
+  dim(full.outcomes.NAs)
+  #dim(outcome.missing.clean.10$data.out)
+  #dim(outcome.missing.clean.20$data.out)
+  dim(outcome.missing.clean.25.25$data.out)
+  
+  
+  dim(full.predictors.NAs)
+  #dim(predictors.missing.clean.10$data.out)
+  dim(predictors.missing.clean.20$data.out)
+  dim(predictors.missing.clean.25.25$data.out)
+  
+  
+  #colnames(predictors.missing.clean.10$data.out)
+  #colnames(predictors.missing.clean.20$data.out)
+  colnames(predictors.missing.clean.25.25$data.out)
+  
+  colnames(outcome.missing.clean.25.25$data.out)
+```
+
+
+```{r real final predictors}
+dim(predictors.missing.clean.25.25$data.out[,c("CASEID","studysex", "clinage", "studyed", "cgsex", "cgage", "cgedyrs", "cgedlev", "apathy", "wander", "violenc", "disinhi", "otherbe", "sad", "interest", "appetite", "lossweig", "asleep", "awaken", "allday", "tiredall", "move", "worthles", "suicide", "impress", "shorterm", "longterm", "abstract", "judgemen", "aphasia", "apraxia", "change", "work", "social", "relation", "dbdscore", "adlrate",paste0("c",238:250),paste0("c",254:269),paste0("c",275:277),paste0("c",280:283),paste0("c",286:290),paste0("c",292:294),paste0("c",301:309),paste0("c",318:321))])
+
+
+summary(as.factor(CSHA.1991.zarit[CSHA.1991.zarit[,"CASEID"] %in% predictors.missing.clean.25.25$data.out[,c("CASEID")],c("painkill")]))
 
 
 
+summary(as.factor(CSHA.1991.zarit[CSHA.1991.zarit[,"CASEID"] %in% outcome.missing.clean.25.25$data.out[,c("CASEID")],c("health1")]))
+
+
+length(intersect(outcome.missing.clean.25.25$data.out[,c("CASEID")],predictors.missing.clean.25.25$data.out[,c("CASEID")]))
+  ## and then get all the previously listed variables from above...
+
+### send/include fast.csci function.
+
+## need to add in a recoded health1 to outcomes and a recoded painkill to predictors
+
+final.participants <- as.character(intersect(outcome.missing.clean.25.25$data.out[,c("CASEID")],predictors.missing.clean.25.25$data.out[,c("CASEID")]))
+
+  ## I need to add painkill.
+fin.preds <- predictors.missing.clean.25.25$data.out[,c("CASEID","studysex", "clinage", "studyed", "cgsex", "cgage", "cgedyrs", "cgedlev", "apathy", "wander", "violenc", "disinhi", "otherbe", "sad", "interest", "appetite", "lossweig", "asleep", "awaken", "allday", "tiredall", "move", "worthles", "suicide", "impress", "shorterm", "longterm", "abstract", "judgemen", "aphasia", "apraxia", "change", "work", "social", "relation", "dbdscore", "adlrate",paste0("c",238:250),paste0("c",254:269),paste0("c",275:277),paste0("c",280:283),paste0("c",286:290),paste0("c",292:294),paste0("c",301:309),paste0("c",318:321))]
+rownames(fin.preds) <- as.character(fin.preds[,"CASEID"])
+fin.preds <- fin.preds[,-c(which(colnames(fin.preds) == "CASEID"))]
+fin.preds <- fin.preds[final.participants,]
+
+painkill <- CSHA.1991.zarit[,c("CASEID","painkill")]
+rownames(painkill) <- as.character(painkill[,"CASEID"])
+#head(rownames(painkill))
+#summary(as.factor(painkill[final.participants,"painkill"]))
+fin.preds <- cbind(fin.preds[final.participants,],as.factor(painkill[final.participants,"painkill"]))
+#colnames(fin.preds)[ncol(fin.preds)]
+colnames(fin.preds)[ncol(fin.preds)] <- "painkill"
+
+dim(fin.preds)
+summary(fin.preds)
+
+fin.outs <- outcome.missing.clean.25.25$data.out
+rownames(fin.outs) <- as.character(fin.outs[,"CASEID"])
+fin.outs <- fin.outs[,-c(which(colnames(fin.outs) == "CASEID"))]
+fin.outs <- fin.outs[final.participants,]
+dim(fin.outs)
+summary(fin.outs)
+
+
+head(final.participants)
+head(as.character(final.participants))
+head(CSHA.1991.zarit_disorders_design[,"CASEID"])
+head(rownames(CSHA.1991.zarit_disorders_design))
+
+#rownames(CSHA.1991.zarit_disorders_design) <- CSHA.1991.zarit_disorders_design[,"CASEID"]
+fin.des <- CSHA.1991.zarit_disorders_design[as.character(final.participants),2:6]
+dim(fin.des)
+head(fin.des)
+
+fin.des.nom <- makeNominalData(fin.des)
+dim(fin.des.nom)
+colSums(fin.des.nom)
+
+
+## FIN REORDERING
+fin.des <- fin.des[rownames(fin.des),]
+head(fin.des)
+fin.des.nom <- fin.des.nom[rownames(fin.des),]
+head(fin.des.nom)
+fin.preds <- fin.preds[rownames(fin.des),]
+head(fin.preds)[,1:5]
+fin.outs <- fin.outs[rownames(fin.des),]
+head(fin.outs)[,1:5]
+
+save(fin.des,file='./Final/fin.des.rda')
+save(fin.des.nom,file='./Final/fin.des.nom.rda')
+save(fin.preds,file='./Final/fin.preds.rda')
+save(fin.outs,file='./Final/fin.outs.rda')
+
+```
 
